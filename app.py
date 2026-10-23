@@ -14,6 +14,7 @@ from werkzeug.utils import secure_filename
 
 import db
 import parse
+import vlm
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
@@ -74,6 +75,7 @@ def add():
 
         text = None
         source = None
+        data = None  # set directly when the VLM reads a screenshot
         try:
             if link:
                 text = parse.parse_link(link)
@@ -82,8 +84,13 @@ def add():
                 filename = secure_filename(screenshot.filename)
                 saved_path = os.path.join(UPLOAD_DIR, filename)
                 screenshot.save(saved_path)
-                text = parse.ocr_image(saved_path)
                 source = filename
+                try:
+                    # Default: VLM reads the screenshot (OCR text is only for the JD store).
+                    data, _model = vlm.extract_fields_vlm(saved_path)
+                except Exception:
+                    data = None  # fall back to OCR + regex below
+                text = parse.ocr_image(saved_path)
             else:
                 flash("Paste a link or upload a screenshot, or enter details manually.")
                 return redirect(url_for("add"))
@@ -91,8 +98,9 @@ def add():
             flash(f"Could not read the job posting: {err}")
             return redirect(url_for("add"))
 
-        # Infer fields (Workday/Greenhouse/iCIMS-aware), then carry raw JD forward.
-        data = parse.extract_fields(text, url=link or None)
+        # Infer fields (VLM for screenshots; else Workday/Greenhouse/iCIMS regex).
+        if data is None:
+            data = parse.extract_fields(text, url=link or None)
         data["link"] = link or None
         data["job_description"] = text
         data["jd_source"] = source

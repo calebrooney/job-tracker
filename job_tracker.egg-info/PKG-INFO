@@ -12,3 +12,4 @@ Requires-Dist: pytesseract
 Requires-Dist: pillow
 Requires-Dist: openpyxl
 Requires-Dist: pypdf
+Requires-Dist: pypdfium2

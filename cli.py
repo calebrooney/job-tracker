@@ -3,22 +3,37 @@
 Run via `applied` (or `python cli.py`). No browser.
 """
 
+import argparse
+import hashlib
+import json
 import os
 import select
 import shutil
 import subprocess
 import sys
 import termios
+import time
 import tty
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 from urllib.parse import unquote, urlparse
 
 import db
 import parse
+import vlm
 
 # Screenshots copied here so paths stay project-local (same as the web app).
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# `applied --test` results (predictions + run metadata) live here.
+EVAL_DIR = os.path.join(os.path.dirname(__file__), "eval")
+
+# Fields compared between VLM prediction and user-confirmed value.
+LOG_FIELDS = [
+    "role", "company", "location", "location_type", "pay", "job_id",
+    "posted_date", "application_deadline", "department", "us_citizen_required",
+]
 
 
 def _get_key():
@@ -327,8 +342,8 @@ def resolve_capture(raw):
     return dest, os.path.basename(dest)
 
 
-def capture():
-    """Read a link and/or screenshot/PDF, infer fields, confirm, and insert."""
+def capture(backend):
+    """Read a link and/or screenshot/PDF, infer fields (VLM), confirm, and insert."""
     db.init_db()
     print("New application — paste a link and/or screenshot/PDF\n")
     print(
@@ -352,33 +367,57 @@ def capture():
                 media = link
             link = None
 
-    parts = []
+    parts = []  # JD text pieces (link text now, OCR text joined at save)
     sources = []
+    path = None  # local image/PDF, if any
     try:
         if link:
             print("Reading link...")
             parts.append(parse.parse_link(link))
             sources.append(link)
 
-        # Path given → parse it. No path and no link → clipboard PDF/image.
+        # Path given → use it. No path and no link → clipboard PDF/image.
         if media or not link:
             path, name = resolve_capture(media)
-            parts.append(text_from_file(path))
             sources.append(name)
 
-        if not parts:
+        if not parts and not path:
             print("Need a link, screenshot, or PDF.")
             return
     except Exception as err:
         print(f"Could not read the posting: {err}")
         return
 
-    text = "\n\n".join(parts)
     source = " + ".join(sources)
+    pool = ThreadPoolExecutor(max_workers=1)
+    ocr_future = None  # full-JD OCR, started only after the VLM returns
+    vlm_log = None  # (model, latency_ms, predicted) when the VLM was used
 
-    data = parse.extract_fields(text, url=link)
+    if path:
+        # Default live path: VLM only, so latency is just one model call.
+        print(f"Reading with VLM ({backend})...")
+        start = time.perf_counter()
+        try:
+            data, model = vlm.extract_fields_vlm(path, backend)
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            print(f"VLM done in {latency_ms / 1000:.1f}s")
+            vlm_log = (model, latency_ms, {k: data.get(k) for k in LOG_FIELDS})
+            # Full-JD OCR runs while you review the fields (no VLM contention).
+            ocr_future = pool.submit(vlm.jd_text, path)
+        except Exception as err:
+            # Fallback: OCR + regex like before.
+            print(f"VLM failed ({err}); falling back to OCR + regex...")
+            try:
+                parts.append(vlm.jd_text(path))
+            except Exception as ocr_err:
+                print(f"Could not read the posting: {ocr_err}")
+                return
+            data = parse.extract_fields("\n\n".join(parts), url=link)
+    else:
+        data = parse.extract_fields("\n\n".join(parts), url=link)
+
     data["link"] = link
-    data["job_description"] = text
+    data["job_description"] = "\n\n".join(parts) or None
     data["jd_source"] = source
     data["app_date"] = date.today().isoformat()
     data["status"] = "applied"
@@ -460,15 +499,130 @@ def capture():
         print("Cancelled.")
         return
 
+    # Collect the background OCR text (usually already finished by now).
+    if ocr_future is not None:
+        try:
+            parts.append(ocr_future.result())
+        except Exception as err:
+            print(f"(Could not OCR the job description: {err})")
+        data["job_description"] = "\n\n".join(parts) or None
+    # Clipboard captures are ephemeral: drop the temp copy once read.
+    if path and os.path.basename(path).startswith("clipboard_"):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
     app_id = db.add_application(data)
+    if vlm_log:
+        model, latency_ms, predicted = vlm_log
+        db.log_extraction(
+            backend, model, latency_ms, predicted,
+            {k: data.get(k) for k in LOG_FIELDS},
+        )
     role = data.get("role") or "(no role)"
     company = data.get("company") or "(no company)"
     print(f"\nLogged #{app_id}: {role} @ {company}")
 
 
+def collect_test_files(path):
+    """Return image/PDF files for a test run (a single file or a folder)."""
+    path = normalize_path(path)
+    if os.path.isdir(path):
+        exts = (".png", ".jpg", ".jpeg", ".webp", ".pdf")
+        return sorted(
+            os.path.join(path, f) for f in os.listdir(path) if f.lower().endswith(exts)
+        )
+    if os.path.isfile(path):
+        return [path]
+    raise FileNotFoundError(f"Not found: {path}")
+
+
+def git_commit():
+    """Short git hash of the code under test (or None)."""
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True, text=True, cwd=os.path.dirname(__file__),
+        )
+        return out.stdout.strip() or None
+    except OSError:
+        return None
+
+
+def run_test(path, backend, run_name=None):
+    """Batch eval: run OCR+regex and the VLM in parallel on each file.
+
+    Writes eval/runs/<run>/predictions.jsonl (+ meta.json). Never touches the
+    database and asks no questions. Re-running with the same --run name skips
+    files already done (resumable, e.g. for the OpenRouter free daily quota).
+    """
+    files = collect_test_files(path)
+    run_name = run_name or f"{datetime.now():%Y%m%d_%H%M%S}_{backend}"
+    run_dir = os.path.join(EVAL_DIR, "runs", run_name)
+    os.makedirs(run_dir, exist_ok=True)
+    pred_path = os.path.join(run_dir, "predictions.jsonl")
+
+    # Record settings so runs are reproducible and comparable.
+    meta_path = os.path.join(run_dir, "meta.json")
+    if not os.path.exists(meta_path):
+        with open(meta_path, "w") as f:
+            json.dump({
+                "backend": backend,
+                "model": vlm.BACKENDS[backend]["model"],
+                "git_commit": git_commit(),
+                "prompt_sha1": hashlib.sha1(vlm.PROMPT.encode()).hexdigest()[:10],
+                "max_pixels": vlm.MAX_PIXELS,
+                "crop_top": vlm.CROP_TOP,
+                "max_tokens": vlm.MAX_TOKENS,
+                "started": datetime.now().isoformat(timespec="seconds"),
+            }, f, indent=2)
+
+    # Skip files already recorded in this run folder.
+    done = set()
+    if os.path.exists(pred_path):
+        with open(pred_path) as f:
+            done = {json.loads(line)["file"] for line in f if line.strip()}
+
+    todo = [p for p in files if os.path.basename(p) not in done]
+    print(f"Test run '{run_name}': {len(todo)} to do, {len(done)} already done")
+    for i, p in enumerate(todo, start=1):
+        name = os.path.basename(p)
+        try:
+            record = {"file": name, **vlm.extract_both(p, backend)}
+        except Exception as err:  # keep the batch going
+            record = {"file": name, "error": str(err)}
+        with open(pred_path, "a") as f:
+            f.write(json.dumps(record, default=str) + "\n")
+        v = record.get("vlm") or {}
+        r = record.get("regex") or {}
+        print(
+            f"[{i}/{len(todo)}] {name}  "
+            f"vlm {v.get('latency_s', 0):.1f}s{' ERR' if v.get('error') else ''}  "
+            f"regex {r.get('latency_s', 0):.1f}s"
+        )
+    print(f"Saved to {pred_path}")
+
+
 def main():
     """Entry point for `applied` / `python cli.py`."""
-    capture()
+    ap = argparse.ArgumentParser(prog="applied")
+    ap.add_argument(
+        "--test", metavar="PATH",
+        help="batch eval on an image/PDF or folder: runs regex+VLM in parallel, "
+             "writes eval/runs/, never saves applications",
+    )
+    ap.add_argument(
+        "--backend", choices=list(vlm.BACKENDS), default=vlm.DEFAULT_BACKEND,
+        help="VLM backend (default: %(default)s)",
+    )
+    ap.add_argument("--run", help="run folder name for --test (reuse to resume)")
+    args = ap.parse_args()
+
+    if args.test:
+        run_test(args.test, args.backend, args.run)
+    else:
+        capture(args.backend)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ Uses a single Postgres `applications` table modeled on the tracking
 spreadsheet. Connection info comes from the DATABASE_URL env var.
 """
 
+import json
 import os
 
 from dotenv import load_dotenv
@@ -146,6 +147,33 @@ def get_application(app_id):
     ) as cur:
         cur.execute("SELECT * FROM applications WHERE id = %s", (app_id,))
         return cur.fetchone()
+
+
+def log_extraction(backend, model, latency_ms, predicted, confirmed):
+    """Record VLM-predicted vs user-confirmed fields (live accuracy trend)."""
+    with get_connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS extraction_logs (
+                id           SERIAL PRIMARY KEY,
+                backend      TEXT,
+                model        TEXT,
+                latency_ms   INTEGER,
+                predicted    JSONB,
+                confirmed    JSONB,
+                created_at   TIMESTAMPTZ DEFAULT now()
+            )
+            """
+        )
+        cur.execute(
+            "INSERT INTO extraction_logs (backend, model, latency_ms, predicted, confirmed)"
+            " VALUES (%s, %s, %s, %s, %s)",
+            (
+                backend, model, latency_ms,
+                psycopg2.extras.Json(predicted, dumps=lambda o: json.dumps(o, default=str)),
+                psycopg2.extras.Json(confirmed, dumps=lambda o: json.dumps(o, default=str)),
+            ),
+        )
 
 
 def update_jd(app_id, job_description, jd_source):

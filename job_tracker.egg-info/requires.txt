@@ -7,3 +7,4 @@ pytesseract
 pillow
 openpyxl
 pypdf
+pypdfium2

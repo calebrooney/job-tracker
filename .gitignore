@@ -3,3 +3,6 @@
 __pycache__/
 uploads/
 .DS_Store
+
+eval/runs/
+.venv-vlm/

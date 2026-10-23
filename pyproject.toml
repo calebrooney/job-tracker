@@ -17,10 +17,11 @@ dependencies = [
     "pillow",
     "openpyxl",
     "pypdf",
+    "pypdfium2",
 ]
 
 [project.scripts]
 applied = "cli:main"
 
 [tool.setuptools]
-py-modules = ["cli", "db", "parse", "app", "import_xlsx"]
+py-modules = ["cli", "db", "parse", "vlm", "app", "import_xlsx"]
