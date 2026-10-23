@@ -284,6 +284,19 @@ error "no pdf"
     )
     if result.returncode != 0 or not os.path.isfile(dest) or os.path.getsize(dest) == 0:
         raise RuntimeError("no pdf")
+    # A broken pasteboard write can yield a tiny/unreadable file — that used
+    # to pass silently, then fall back to a page-1-only PNG of the posting.
+    try:
+        from pypdf import PdfReader
+
+        if len(PdfReader(dest).pages) == 0:
+            raise ValueError("no pages")
+    except Exception:
+        try:
+            os.remove(dest)
+        except OSError:
+            pass
+        raise RuntimeError("unreadable pdf")
     return dest
 
 
@@ -293,7 +306,11 @@ def read_clipboard_capture():
         print("Reading PDF from clipboard...")
         return save_clipboard_pdf(), "pdf"
     except RuntimeError:
-        pass
+        print(
+            "Clipboard PDF unreadable — falling back to image.\n"
+            "  ⚠ A clipboard image holds PAGE 1 ONLY; the rest of the JD is lost.\n"
+            "    To capture all pages: redo Cmd+P → PDF → Copy PDF to Clipboard."
+        )
     try:
         print("Reading image from clipboard...")
         return save_clipboard_image(), "image"
@@ -312,12 +329,7 @@ def text_from_file(path):
     if lower.endswith(".pdf"):
         print("Extracting text from PDF...")
         text = parse.pdf_text(path)
-        # Clipboard PDFs are ephemeral — drop the temp copy after extract.
-        if os.path.basename(path).startswith("clipboard_"):
-            try:
-                os.remove(path)
-            except OSError:
-                pass
+        # Clipboard PDFs are kept until save so their pages can be archived.
         if not text:
             raise RuntimeError(
                 "PDF had no extractable text (likely a scan). "
@@ -391,6 +403,7 @@ def capture(backend):
     source = " + ".join(sources)
     pool = ThreadPoolExecutor(max_workers=1)
     ocr_future = None  # full-JD OCR, started only after the VLM returns
+    pages_future = None  # per-page PNGs for the DB image store
     vlm_log = None  # (model, latency_ms, predicted) when the VLM was used
 
     if path:
@@ -415,6 +428,11 @@ def capture(backend):
             data = parse.extract_fields("\n\n".join(parts), url=link)
     else:
         data = parse.extract_fields("\n\n".join(parts), url=link)
+
+    # Render every captured page to PNG while the fields are reviewed, so the
+    # full JD can be archived in the DB at save time (no local PDFs to keep).
+    if path:
+        pages_future = pool.submit(vlm.png_pages_bytes, path)
 
     data["link"] = link
     data["job_description"] = "\n\n".join(parts) or None
@@ -506,7 +524,8 @@ def capture(backend):
         except Exception as err:
             print(f"(Could not OCR the job description: {err})")
         data["job_description"] = "\n\n".join(parts) or None
-    # Clipboard captures are ephemeral: drop the temp copy once read.
+    # Clipboard captures are ephemeral: drop the temp copy once the images
+    # are safely in the DB (the application row exists by this point).
     if path and os.path.basename(path).startswith("clipboard_"):
         try:
             os.remove(path)
@@ -514,6 +533,16 @@ def capture(backend):
             pass
 
     app_id = db.add_application(data)
+    # Archive every rendered page before the temp clipboard copy is dropped.
+    if pages_future is not None:
+        try:
+            db.store_jd_images(
+                app_id,
+                [(pg, data_b, "image/png", None, None)
+                 for pg, data_b in pages_future.result()],
+            )
+        except Exception as err:
+            print(f"(Could not store JD page images: {err})")
     if vlm_log:
         model, latency_ms, predicted = vlm_log
         db.log_extraction(

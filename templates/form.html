@@ -14,6 +14,10 @@
     {# Hidden fields to carry forward raw extracted JD text and its source #}
     <input type="hidden" name="job_description" value="{{ data.job_description or '' }}">
     <input type="hidden" name="jd_source" value="{{ data.jd_source or '' }}">
+    {# JD page images from the capture step, archived to the DB on save #}
+    {% for page in pages or [] %}
+    <input type="hidden" name="jd_pages" value="{{ page }}">
+    {% endfor %}
 
     <!-- Section 1: Role & Organization -->
     <div class="card">

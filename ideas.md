@@ -5,3 +5,4 @@
     - save and upload custom resume, tied to its application and JD
 - save images of JDs in DB
 
+- compensation data: should not aggregate a range, but give range itself

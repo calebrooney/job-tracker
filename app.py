@@ -6,10 +6,13 @@ user validates/edits and saves. Also: list, view details, and re-capture
 a JD on an existing application.
 """
 
+import base64
+import io
 import os
 from datetime import date
 
-from flask import Flask, flash, redirect, render_template, request, url_for
+from flask import Flask, Response, flash, redirect, render_template, request, url_for
+from PIL import Image
 from werkzeug.utils import secure_filename
 
 import db
@@ -45,6 +48,37 @@ def format_salary(val):
 def index():
     """Show the table of all applications."""
     return render_template("index.html", applications=db.list_applications())
+
+
+def _jd_pages_png(pages, mime):
+    """Normalize stored bytes or rendered PIL pages to (page, bytes, mime, w, h).
+
+    Accepts (page, bytes) tuples (from vlm.png_pages_bytes) or PIL images.
+    """
+    out = []
+    for i, item in enumerate(pages, start=1):
+        if isinstance(item, tuple):
+            page, data = item
+            img = Image.open(io.BytesIO(data))
+            w, h = img.size
+        else:
+            page, img = i, item
+            buf = io.BytesIO()
+            img.save(buf, format="PNG", optimize=True)
+            data = buf.getvalue()
+            w, h = img.size
+        out.append((page, data, mime, w, h))
+    return out
+
+
+def _store_jd_images(app_id, pages, mime="image/png"):
+    """Archive every captured page for an application (warn-only on failure)."""
+    if not pages:
+        return
+    try:
+        db.store_jd_images(app_id, _jd_pages_png(pages, mime))
+    except Exception as err:  # keep the save working even if the archive fails
+        print(f"Could not store JD page images: {err}")
 
 
 def _render_form(data):
@@ -90,7 +124,11 @@ def add():
                     data, _model = vlm.extract_fields_vlm(saved_path)
                 except Exception:
                     data = None  # fall back to OCR + regex below
-                text = parse.ocr_image(saved_path)
+                # Full JD text: every page of a scanned PDF, not just page 1.
+                text = vlm.jd_text(saved_path)
+                # Archive all pages at save time (key avoids clashing with DB columns).
+                data = dict(data or {})
+                data["_jd_pages"] = vlm.png_pages_bytes(saved_path)
             else:
                 flash("Paste a link or upload a screenshot, or enter details manually.")
                 return redirect(url_for("add"))
@@ -99,12 +137,28 @@ def add():
             return redirect(url_for("add"))
 
         # Infer fields (VLM for screenshots; else Workday/Greenhouse/iCIMS regex).
+        pages = None
         if data is None:
             data = parse.extract_fields(text, url=link or None)
+        else:
+            pages = data.pop("_jd_pages", None)
+        if pages is not None:
+            # Data URLs survive the confirm-form round trip in hidden inputs.
+            pages = [
+                f"data:image/png;base64,{base64.b64encode(b).decode()}"
+                for _pg, b in pages
+            ]
         data["link"] = link or None
         data["job_description"] = text
         data["jd_source"] = source
-        return _render_form(data)
+        return render_template(
+            "form.html",
+            data=data,
+            pages=pages,
+            today=date.today().isoformat(),
+            location_types=db.LOCATION_TYPES,
+            statuses=db.STATUSES,
+        )
 
     # GET: allow skipping capture to type everything by hand.
     if request.args.get("manual"):
@@ -132,6 +186,14 @@ def save():
         comp_val_raw, comp_type=comp_type_raw
     )
 
+    # JD page images carried from the capture step (data URLs in hidden inputs).
+    jd_pages = []
+    for i, url in enumerate(form.getlist("jd_pages"), start=1):
+        head, _, b64 = (url or "").partition(",")
+        if head.endswith(";base64") and b64:
+            mime = head[5:-7]  # "data:image/png;base64" -> "image/png"
+            jd_pages.append((i, base64.b64decode(b64), mime))
+
     data = {
         "role": form.get("role") or None,
         "company": form.get("company") or None,
@@ -158,6 +220,7 @@ def save():
         "us_citizen_required": us_citizen_required,
     }
     app_id = db.add_application(data)
+    _store_jd_images(app_id, jd_pages)
     flash("Application added.")
     return redirect(url_for("detail", app_id=app_id))
 
@@ -177,7 +240,18 @@ def detail(app_id):
     if application is None:
         flash("Application not found.")
         return redirect(url_for("index"))
-    return render_template("detail.html", app=application)
+    return render_template(
+        "detail.html", app=application, jd_images=db.list_jd_images(app_id)
+    )
+
+
+@app.route("/app/<int:app_id>/jd/image/<int:page>")
+def jd_image(app_id, page):
+    """Serve one stored JD page image straight from the database."""
+    row = db.get_jd_image(app_id, page)
+    if row is None:
+        return "Not found", 404
+    return Response(row[1], mimetype=row[0])
 
 
 @app.route("/app/<int:app_id>/jd", methods=["POST"])
@@ -196,8 +270,9 @@ def capture_jd(app_id):
             filename = secure_filename(screenshot.filename)
             saved_path = os.path.join(UPLOAD_DIR, f"{app_id}_{filename}")
             screenshot.save(saved_path)
-            text = parse.ocr_image(saved_path)
+            text = vlm.jd_text(saved_path)  # all pages, not just the first
             source = filename
+            _store_jd_images(app_id, vlm.png_pages_bytes(saved_path))
         else:
             flash("Provide a link or a screenshot to capture the job description.")
             return redirect(url_for("detail", app_id=app_id))

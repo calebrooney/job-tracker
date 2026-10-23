@@ -113,6 +113,28 @@
     {% endif %}
   </div>
 
+  <!-- Archived JD pages (full multi-page capture, stored in the DB) -->
+  {% if jd_images %}
+  <div class="card">
+    <div class="card-header">
+      <h3>JD Pages ({{ jd_images|length }})</h3>
+    </div>
+    {% for img in jd_images %}
+    <div style="margin-bottom: 16px;">
+      <p class="subtext" style="margin-bottom: 6px;">
+        Page {{ img.page }} of {{ jd_images|length }}
+        {% if img.width %}&bull; {{ img.width }}&times;{{ img.height }}px{% endif %}
+      </p>
+      <a href="{{ url_for('jd_image', app_id=app.id, page=img.page) }}" target="_blank" rel="noopener noreferrer">
+        <img src="{{ url_for('jd_image', app_id=app.id, page=img.page) }}"
+             alt="JD page {{ img.page }}"
+             style="max-width: 100%; border: 1px solid var(--border, #333); border-radius: 6px;">
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   <!-- Re-capture Job Description widget -->
   <div class="card">
     <div class="card-header">

@@ -6,3 +6,10 @@ uploads/
 
 eval/runs/
 .venv-vlm/
+/plans
+
+# Eval corpus: keep the folders, ignore the captured images/PDFs.
+eval/images/*
+!eval/images/.gitkeep
+eval/pdfs/*
+!eval/pdfs/.gitkeep

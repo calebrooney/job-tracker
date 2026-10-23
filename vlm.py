@@ -21,6 +21,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import requests
 from dotenv import load_dotenv
+from PIL import Image
 
 import parse
 
@@ -55,6 +56,9 @@ CROP_TOP = 1.0
 # Cap output tokens: decode time dominates latency.
 MAX_TOKENS = 160
 TIMEOUT_S = 60
+
+# Render scale for full-page captures (~144 dpi): readable OCR + stored pages.
+PDF_RENDER_SCALE = 2.0
 
 # Compact schema: short keys keep the output (and decode time) small.
 PROMPT = (
@@ -91,6 +95,31 @@ def render_image(path):
     if scale < 1:
         img = img.resize((int(img.width * scale), int(img.height * scale)))
     return img
+
+
+def render_pages(path):
+    """Render EVERY page of a PDF (or a single image file) as PIL RGB images.
+
+    Unlike render_image (page 1, sized for the VLM budget), this keeps full
+    pages at capture quality — used for the multi-page JD text fallback and
+    the per-page PNG store in Postgres.
+    """
+    if path.lower().endswith(".pdf"):
+        import pypdfium2 as pdfium
+
+        doc = pdfium.PdfDocument(path)
+        return [p.render(scale=PDF_RENDER_SCALE).to_pil().convert("RGB") for p in doc]
+    return [Image.open(path).convert("RGB")]
+
+
+def png_pages_bytes(path):
+    """Every page of path as a list of (page_number, png_bytes) for DB storage."""
+    pages = []
+    for i, img in enumerate(render_pages(path), start=1):
+        buf = io.BytesIO()
+        img.save(buf, format="PNG", optimize=True)
+        pages.append((i, buf.getvalue()))
+    return pages
 
 
 def _image_data_url(path):
@@ -230,10 +259,12 @@ def jd_text(path):
         text = parse.pdf_text(path)
         if text:
             return text
-        # Scanned PDF: OCR the rendered first page instead.
+        # Scanned PDF: OCR every rendered page (page breaks keep pages apart).
         import pytesseract
 
-        return pytesseract.image_to_string(render_image(path)).strip()
+        return "\n\n".join(
+            pytesseract.image_to_string(img).strip() for img in render_pages(path)
+        ).strip()
     return parse.ocr_image(path)
 
 

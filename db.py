@@ -60,6 +60,23 @@ def init_db():
             )
             """
         )
+        # Per-page rendered JD images (PNG), so nothing has to be kept as a
+        # local PDF. Cascade delete cleans up when the application is removed.
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS jd_images (
+                id             SERIAL PRIMARY KEY,
+                application_id INTEGER NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+                page           INTEGER NOT NULL,
+                mime_type      TEXT NOT NULL DEFAULT 'image/png',
+                data           BYTEA NOT NULL,
+                width          INTEGER,
+                height         INTEGER,
+                created_at     TIMESTAMPTZ DEFAULT now(),
+                UNIQUE (application_id, page)
+            )
+            """
+        )
         # Existing DBs created before these columns need a light migration.
         for col, typ in [
             ("posted_date", "DATE"),
@@ -183,3 +200,51 @@ def update_jd(app_id, job_description, jd_source):
             "UPDATE applications SET job_description = %s, jd_source = %s WHERE id = %s",
             (job_description, jd_source, app_id),
         )
+
+
+def store_jd_images(app_id, pages):
+    """Replace an application's stored JD page images.
+
+    `pages` is a list of (page_number, image_bytes, mime_type, width, height)
+    tuples. Re-capturing a JD replaces its old images in the same transaction.
+    """
+    with get_connection() as conn, conn.cursor() as cur:
+        cur.execute("DELETE FROM jd_images WHERE application_id = %s", (app_id,))
+        cur.executemany(
+            """
+            INSERT INTO jd_images (application_id, page, mime_type, data, width, height)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """,
+            [(app_id, page, mime, data, width, height)
+             for page, data, mime, width, height in pages],
+        )
+
+
+def list_jd_images(app_id):
+    """Metadata for an application's stored JD pages, ordered by page."""
+    with get_connection() as conn, conn.cursor(
+        cursor_factory=psycopg2.extras.RealDictCursor
+    ) as cur:
+        cur.execute(
+            """
+            SELECT page, mime_type, width, height, octet_length(data) AS bytes
+            FROM jd_images
+            WHERE application_id = %s
+            ORDER BY page
+            """,
+            (app_id,),
+        )
+        return cur.fetchall()
+
+
+def get_jd_image(app_id, page):
+    """Return (mime_type, image_bytes) for one stored page, or None."""
+    with get_connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT mime_type, data FROM jd_images WHERE application_id = %s AND page = %s",
+            (app_id, page),
+        )
+        row = cur.fetchone()
+    if row is None:
+        return None
+    return row[0], bytes(row[1])
