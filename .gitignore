@@ -13,3 +13,10 @@ eval/images/*
 !eval/images/.gitkeep
 eval/pdfs/*
 !eval/pdfs/.gitkeep
+# Local eval scratch: helper scripts, link-check dumps, extracted PDF text.
+eval/_build_round2_labels.py
+eval/_build_round2_labels.py.bak
+eval/_link_check*.jsonl
+eval/_pdf_text/
+
+/summ
