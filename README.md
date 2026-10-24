@@ -5,6 +5,63 @@ A simple job application tracker (Flask + Postgres) modeled on the columns in
 screenshot, and it reads the posting (scrape / local OCR), infers the fields,
 and prefills the form for you to validate instead of typing from scratch.
 
+## Architecture
+
+```
+  capture sources                    pipeline (cli.py "applied" · app.py web)
+┌─────────────────────┐
+│ job link (URL)      │── parse_link (BeautifulSoup) ──► raw JD text ─┐
+├─────────────────────┤                                               │
+│ screenshot file     │── copied to uploads/ ─┐                       │
+│ (drag / paste path) │                       │                       │
+├─────────────────────┤                       │                       │
+│ clipboard PDF       │── saved to uploads/,  │                       │
+│ (Print→PDF menu)    │   kept until save     │                       │
+├─────────────────────┤                       │                       │
+│ clipboard image     │── uploads/ (PNGf)     │                       │
+│ ⚠ page 1 only       │                       ▼                       │
+└─────────────────────┘            ┌─────────────────────────┐        │
+                                   │ captured file (img/PDF) │        │
+                                   └──┬──────────┬──────────┬┘        │
+                                      │          │          │         │
+          ┌───────────────────────────┘          │          │         │
+          ▼                                      ▼          ▼         │
+  render_image(path)                   jd_text(path)        png_pages_bytes(path)
+  · PDF: PAGE 1 ONLY                   · embedded text:     · every page rendered
+  · render scale 1.5,                    all pages           at ~144 dpi as PNG
+    downscale to ≤ 1 MP              · scanned PDF:               │
+  · sent to VLM as JPEG                OCR every page             │
+          │                                      │                     │
+          ▼                                      │                     │
+  extract_fields_vlm → role, company,            │                     │
+  location, pay, job_id, ... (page 1             │                     │
+  headers; single fast call)                     │                     │
+          │                                      │                     │
+          ▼                                      ▼                     │
+  confirm fields (CLI single-key / web form) → applications row        │
+  ─ job_description TEXT ◄────────────────────────                     │
+  ─ extraction_logs (predicted vs confirmed, JSONB)                    │
+          │                                                            │
+          ▼ save                                                       ▼
+  ┌────────────────────── Postgres ───────────────────────────┐
+  │ applications (fields + job_description text)              │
+  │ jd_images (BYTEA per page, cascade delete)  ◄── all pages │
+  │ extraction_logs                                           │
+  └───────────────┬───────────────────────────────────────────┘
+                  │
+  detail page: /app/<id> shows JD text + "JD Pages" gallery served
+  from the DB via /app/<id>/jd/image/<page> — no local PDFs needed.
+
+  eval: applied --test → vlm.extract_both = VLM (page 1) ∥ OCR+regex
+        (all pages) → eval/runs/<run>/predictions.jsonl (DB untouched)
+```
+
+Key point: the VLM sees **page 1 only** by design — role/company/location
+live in the header, and one small image keeps the model call fast. The full
+posting is still captured in parallel: `job_description` gets text from **all
+pages**, and `jd_images` stores a rendered PNG of **every page** in Postgres,
+so nothing is lost even though no local PDF is kept.
+
 ## Setup
 
 1. Install the Tesseract OCR binary (needed for screenshot capture):

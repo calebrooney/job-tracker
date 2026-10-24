@@ -18,21 +18,21 @@ one-of-many); `MLOC` = multi-location (San Diego is *one* of several
 
 ## workday — Workday - myworkdayjobs.com
 
-- [ ]    `wd_001_realty-income.png`  [Realty Income] — Co-Op Data Analyst
+- [x]    `wd_001_realty-income.png`  [Realty Income] — Co-Op Data Analyst
   - https://realtyincome.wd108.myworkdayjobs.com/en-US/Realty_Income_Internal_Contractor_Careers/job/Co-Op-Data-Analyst_R-100193
-- [ ] SD `MLOC wd_002_axos-bank.png`  [Axos Bank] — Business Analyst Intern
+- [x] SD `MLOC wd_002_axos-bank.png`  [Axos Bank] — Business Analyst Intern
   - https://axos.wd5.myworkdayjobs.com/en-US/Axos/job/Business-Analyst-Intern_JR5593
-- [ ] SD `MLOC wd_003_axos-bank.png`  [Axos Bank] — JBATA - Data Analyst
+- [x] SD `MLOC wd_003_axos-bank.png`  [Axos Bank] — JBATA - Data Analyst
   - https://axos.wd5.myworkdayjobs.com/en-US/Axos/job/JBATA---Data-Analyst_JR4770
-- [ ] SD `MLOC wd_004_axos-bank.png`  [Axos Bank] — Automation Analyst Intern
+- [x] SD `MLOC wd_004_axos-bank.png`  [Axos Bank] — Automation Analyst Intern
   - https://axos.wd5.myworkdayjobs.com/en-US/Axos/job/Automation-Analyst-Intern_JR5660
-- [ ] SD `wd_005_axos-bank.png`  [Axos Bank] — JBATA - Data Engineer
+- [x] SD `wd_005_axos-bank.png`  [Axos Bank] — JBATA - Data Engineer
   - https://axos.wd5.myworkdayjobs.com/en-US/Axos/job/HQ---San-Diego-CA/JBATA--Data-Engineer_JR5192-1
-- [ ] SD `MLOC wd_006_axos-bank.png`  [Axos Bank] — Credit Analyst I
+- [x] SD `MLOC wd_006_axos-bank.png`  [Axos Bank] — Credit Analyst I
   - https://axos.wd5.myworkdayjobs.com/en-US/Axos/job/HQ---San-Diego-CA/Credit-Analyst-I_JR4610
 - [ ] SD `wd_007_sony.png`  [Sony] — Account Management & Business Analytics Intern
   - https://sonyglobal.wd1.myworkdayjobs.com/en-US/sonyglobalcareers/job/San-Diego/Account-Management---Business-Analytics-Intern_JR-119543
-- [ ] SD `wd_008_solar-turbines-caterpillar.png`  [Solar Turbines (Caterpillar)] — 2027 Entry Level IT Analyst
+- [x] SD `wd_008_solar-turbines-caterpillar.png`  [Solar Turbines (Caterpillar)] — 2027 Entry Level IT Analyst
   - https://cat.wd5.myworkdayjobs.com/en-US/SolarTurbines/job/XMLNAME-2027-Entry-Level-IT-Analyst_R0000381899
 - [ ] SD `wd_009_solar-turbines-caterpillar.png`  [Solar Turbines (Caterpillar)] — 2027 Internship - Gas Compressor Data Analyst
   - https://cat.wd5.myworkdayjobs.com/en-US/SolarTurbines/job/XMLNAME-2027-Internship--Gas-Compressor-Data-Analyst_R0000375786
@@ -42,15 +42,15 @@ one-of-many); `MLOC` = multi-location (San Diego is *one* of several
   - https://bah.wd1.myworkdayjobs.com/en-US/BAH_Jobs/job/San-Diego-CA/Business-Analytics-Specialist--Junior_R0228053
 - [ ] SD `MLOC wd_012_mufg.png`  [MUFG] — 2027 CIBM Full-Time Analyst Program - Restaurant & Hospitality Finance  — MULTI-LOC tuning case
   - https://mufgub.wd3.myworkdayjobs.com/en-US/MUFG-Careers/job/XMLNAME-2027-Corporate--Investment-Banking-and-Markets--CIBM--Full-Time-Analyst-Program---Restaurant---Hospitality-Finance---San-Diego--Atlanta--Boston_10079932-WD-1
-- [ ]    `wd_013_iqvia.png`  [IQVIA] — Associate, Healthcare & Analytics Strategy Consulting (MASC, Hybrid)  — TRAP: no SD location
+- [x]    `wd_013_iqvia.png`  [IQVIA] — Associate, Healthcare & Analytics Strategy Consulting (MASC, Hybrid)  — TRAP: no SD location
   - https://iqvia.wd1.myworkdayjobs.com/en-US/IQVIA/job/Associate--Healthcare---Analytics-Strategy-Consulting--MASC--Hybrid-_R1570555
 - [ ] SD `wd_014_allstate.png`  [Allstate] — Data Analytics Consultant II  — TRAP: ambiguous SD
   - https://allstate.wd5.myworkdayjobs.com/en-US/Allstate_Careers/job/USA---SD-Remote/Data-Analytics-Consultant-II_R34238-1
 - [ ]    `wd_015_vizient.png`  [Vizient] — Analytics & Insights Associate
   - https://vizient.wd1.myworkdayjobs.com/en-US/Vizient_Careers/job/Analytics---Insights-Associate_34485R
-- [ ] SD `wd_016_jll.png`  [JLL] — Public Institutions Advisory Summer 2027 Internship
+- [x] SD `wd_016_jll.png`  [JLL] — Public Institutions Advisory Summer 2027 Internship
   - https://jll.wd1.myworkdayjobs.com/en-GB/jllcareers/job/Public-Institutions-Advisory-Summer-2027-Internship---San-Diego--CA_REQ534204
-- [ ] SD `wd_017_booz-allen-hamilton.png`  [Booz Allen Hamilton] — University - 2027 Summer Games Data Scientist Intern
+- [x] SD `wd_017_booz-allen-hamilton.png`  [Booz Allen Hamilton] — University - 2027 Summer Games Data Scientist Intern
   - https://bah.wd1.myworkdayjobs.com/en-US/bah_jobs/job/San-Diego-CA/University---2027-Summer-Games-Data-Scientist-Intern---San-Diego--CA_R0248045
 - [ ] SD `wd_018_resmed-brightree.png`  [ResMed (Brightree)] — Commercial Analytics Analyst
   - https://resmed.wd3.myworkdayjobs.com/brightree_external_careers/job/San-Diego-CA-United-States/Commercial-Analytics-Analyst_JR_050797-2
@@ -58,9 +58,9 @@ one-of-many); `MLOC` = multi-location (San Diego is *one* of several
   - https://mydpr.wd5.myworkdayjobs.com/11212017/job/san-diego---office/spw-business-systems-analyst_jr-17432
 - [ ] SD `wd_020_sony.png`  [Sony] — Analyst, Digital Employee Experience (DEX) Operations & Analytics
   - https://sonyglobal.wd1.myworkdayjobs.com/de-DE/SonyGlobalCareers/job/San-Diego/Analyst--Digital-Employee-Experience--DEX--Operations---Analytics-_JR-119777
-- [ ]    `wd_021_wilson-sonsini-goodrich-rosati.png`  [Wilson Sonsini Goodrich & Rosati] — Competitive Intelligence Analyst
+- [x]    `wd_021_wilson-sonsini-goodrich-rosati.png`  [Wilson Sonsini Goodrich & Rosati] — Competitive Intelligence Analyst
   - https://wsgr.wd503.myworkdayjobs.com/wsgr/job/Competitive-Intelligence-Analyst_R1773
-- [ ]    `wd_022_paul-hastings.png`  [Paul Hastings] — Tax Analyst
+- [x]    `wd_022_paul-hastings.png`  [Paul Hastings] — Tax Analyst
   - https://paulhastings.wd1.myworkdayjobs.com/en-US/PH-Staff/job/Tax-Analyst_R4552
 - [ ]    `wd_023_neurocrine-biosciences.png`  [Neurocrine Biosciences] — Sr Analyst, Data Quality
   - https://neurocrine.wd5.myworkdayjobs.com/en-US/Neurocrinecareers/job/Sr-Analyst--Data-Quality_R7249
@@ -75,41 +75,41 @@ one-of-many); `MLOC` = multi-location (San Diego is *one* of several
 
 ## greenhouse — Greenhouse - boards.greenhouse.io / job-boards.greenhouse.io
 
-- [ ] SD `gh_001_veracyte.png`  [Veracyte]
-  - https://boards.greenhouse.io/veracyte/jobs/5201557007
-- [ ] SD `gh_002_veracyte.png`  [Veracyte]
-  - https://boards.greenhouse.io/veracyte/jobs/5134376007
-- [ ]    `gh_003_veracyte.png`  [Veracyte] — Manager, Business Analytics
+- [x] SD `gh_001_veracyte.png`  [Veracyte]
+  - https://www.veracyte.com/company/careers/job-detail/?gh_jid=5242296007
+- [x] SD `gh_002_veracyte.png`  [Veracyte]
+  - https://www.veracyte.com/company/careers/job-detail/?gh_jid=5226416007
+- [x]    `gh_003_veracyte.png`  [Veracyte] — Manager, Business Analytics
   - https://boards.greenhouse.io/veracyte/jobs/5248609007
 - [ ]    `gh_004_anduril-industries.png`  [Anduril Industries]
   - https://boards.greenhouse.io/andurilindustries/jobs/5126633007
-- [ ]    `gh_005_anduril-industries.png`  [Anduril Industries] — Supplier Quality Data Analyst
+- [x]    `gh_005_anduril-industries.png`  [Anduril Industries] — Supplier Quality Data Analyst
   - https://boards.greenhouse.io/andurilindustries/jobs/5244483007
-- [ ]    `gh_006_mobilityware.png`  [MobilityWare] — Senior Data Analyst
+- [x]    `gh_006_mobilityware.png`  [MobilityWare] — Senior Data Analyst
   - http://boards.greenhouse.io/mobilityware/jobs/8263482
-- [ ]    `gh_007_chaos-industries.png`  [Chaos Industries] — People Data Analyst
+- [x]    `gh_007_chaos-industries.png`  [Chaos Industries] — People Data Analyst
   - https://job-boards.greenhouse.io/chaosindustries/jobs/5166436007
-- [ ]    `gh_008_wing-alphabet.png`  [Wing (Alphabet)] — Battery Logistics Intern
-  - https://boards.greenhouse.io/wing/jobs/5378798002
+- [ ]    `gh_008_wing-alphabet.png`  [Wing (Alphabet)] — Data Scientist Intern, Summer 2027
+  - https://wing.com/careers/8872482002?gh_jid=8872482002
 - [ ]    `gh_009_anduril-industries.png`  [Anduril Industries] — New Grad Engineering Leadership Development Program
   - https://boards.greenhouse.io/andurilindustries/jobs/5212993007
-- [ ]    `gh_010_clearway-energy.png`  [Clearway Energy]
-  - https://job-boards.greenhouse.io/clearwayjobs/jobs/5212663007
-- [ ]    `gh_011_aksia.png`  [Aksia] — Analyst, Operational Due Diligence
+- [x]    `gh_010_clearway-energy.png`  [Clearway Energy]
+  - https://job-boards.greenhouse.io/clearwayjobs/jobs/5195082007
+- [x]    `gh_011_aksia.png`  [Aksia] — Analyst, Operational Due Diligence
   - https://job-boards.greenhouse.io/aksia/jobs/8801210002
 - [ ]    `gh_012_aksia.png`  [Aksia] — Analyst/Associate, Private Equity Prime Services
   - https://job-boards.greenhouse.io/aksia/jobs/8403129002
-- [ ]    `gh_013_northmarq.png`  [Northmarq] — 2027 Early Career Professionals - Talent
+- [x]    `gh_013_northmarq.png`  [Northmarq] — 2027 Early Career Professionals - Talent
   - https://job-boards.greenhouse.io/northmarq/jobs/5383498008
 - [ ]    `gh_014_voyager-technologies.png`  [Voyager Technologies]
   - https://job-boards.greenhouse.io/voyagertechnologiesinc/jobs/4354943009
 - [ ]    `gh_015_mg-properties.png`  [MG Properties]
-  - https://job-boards.greenhouse.io/mgproperties/jobs/5218954007
-- [ ]    `gh_016_dmc-engineering.png`  [DMC Engineering]
-  - https://job-boards.greenhouse.io/dmcengineering_campus/jobs/5395432008
+  - https://job-boards.greenhouse.io/mgproperties/jobs/5218954007 
+- [x]    `gh_016_dmc-engineering.png`  [DMC Engineering] - Business Analyst
+  - https://job-boards.greenhouse.io/dmcengineering_campus/jobs/5397245008
 - [ ]    `gh_017_jensen-hughes.png`  [Jensen Hughes]
   - https://job-boards.greenhouse.io/jensenhughes/jobs/5429320008
-- [ ]    `gh_018_sony-interactive-entertainment.png`  [Sony Interactive Entertainment] — Baseball Test Analyst
+- [x]    `gh_018_sony-interactive-entertainment.png`  [Sony Interactive Entertainment] — Baseball Test Analyst
   - https://job-boards.greenhouse.io/sonyinteractiveentertainmentglobal/jobs/6015683004
 
 ## icims — iCIMS - careers-*.icims.com
@@ -120,11 +120,11 @@ one-of-many); `MLOC` = multi-location (San Diego is *one* of several
   - https://careers-peraton.icims.com/jobs/171538/spring-%26-summer-2027-finance-analyst-co-op/job
 - [ ]    `ic_003_peraton.png`  [Peraton] — Summer 2027 Production Support Analyst Intern
   - https://careers-peraton.icims.com/jobs/171540/summer-2027-production-support-analyst-intern/job
-- [ ]    `ic_004_sdsu-research-foundation.png`  [SDSU Research Foundation] — NIWC Undergraduate Student - Port Contamination Project
+- [x]    `ic_004_sdsu-research-foundation.png`  [SDSU Research Foundation] — NIWC Undergraduate Student - Port Contamination Project
   - https://careers-sdsurf.icims.com/jobs/20513/niwc---undergraduate-student---port-contamination-project-%28task-no.-71-342609%29/job
-- [ ]    `ic_005_sdsu-research-foundation.png`  [SDSU Research Foundation] — IS Analyst/Programmer II
+- [x]    `ic_005_sdsu-research-foundation.png`  [SDSU Research Foundation] — IS Analyst/Programmer II
   - https://careers-sdsurf.icims.com/jobs/20278/is-analyst-programmer-ii/job
-- [ ]    `ic_006_sdsu-research-foundation.png`  [SDSU Research Foundation] — Admin Support Assistant I
+- [x]    `ic_006_sdsu-research-foundation.png`  [SDSU Research Foundation] — Admin Support Assistant I
   - https://careers-sdsurf.icims.com/jobs/20108/admin-support-assistant-i/job
 - [ ]    `ic_007_werfen.png`  [Werfen] — QA Complaint Analyst II
   - https://careers-werfen.icims.com/jobs/10988/qa-complaint-analyst--ii/job
@@ -154,23 +154,23 @@ one-of-many); `MLOC` = multi-location (San Diego is *one* of several
 
 ## other — Other - Lever / Ashby / SmartRecruiters / custom
 
-- [ ] SD `ot_001_mulligan-funding.png`  [Mulligan Funding] — Data Scientist I - Management Trainee
+- [x] SD `ot_001_mulligan-funding.png`  [Mulligan Funding] — Data Scientist I - Management Trainee
   - https://jobs.lever.co/mulliganfunding/53531dc7-9593-44ea-8b42-2995664968a3
-- [ ] SD `MLOC ot_002_zoox.png`  [Zoox] — Contract Student Worker: Analyst (Full-time)  — MULTI-LOC tuning case
+- [x] SD `MLOC ot_002_zoox.png`  [Zoox] — Contract Student Worker: Analyst (Full-time)  — MULTI-LOC tuning case
   - https://jobs.lever.co/zoox/737259b5-4258-4557-b7e0-0627b3d870a5
-- [ ] SD `ot_003_craftwater-engineering.png`  [Craftwater Engineering] — Watershed Analyst Intern
+- [x] SD `ot_003_craftwater-engineering.png`  [Craftwater Engineering] — Watershed Analyst Intern
   - https://jobs.lever.co/craftwater/062d378e-3b50-49fe-a442-d657f1b310b8
-- [ ]    `ot_004_veeva-systems.png`  [Veeva Systems] — Marketing Analytics - Data Analyst
+- [x]    `ot_004_veeva-systems.png`  [Veeva Systems] — Marketing Analytics - Data Analyst
   - https://jobs.lever.co/veeva/28c47d34-3ad6-4485-85a9-686b4239b9ea
-- [ ]    `ot_005_vitana-pediatric.png`  [Vitana Pediatric] — Data Analyst
+- [x]    `ot_005_vitana-pediatric.png`  [Vitana Pediatric] — Data Analyst
   - https://jobs.lever.co/vitana-pediatric/80e4fc09-ab97-4a21-ba8e-9e41ff17d25e
-- [ ] SD `ot_006_genalyte.png`  [Genalyte] — Scientist I/II, Biostatistics
+- [x] SD `ot_006_genalyte.png`  [Genalyte] — Scientist I/II, Biostatistics
   - https://jobs.lever.co/genalyte/e651aaa6-d6bb-45ec-ad52-85369494d8b1
-- [ ] SD `MLOC ot_007_shield-ai.png`  [Shield AI] — Staff Engineer, Data Analysis  — MULTI-LOC tuning case
+- [x] SD `MLOC ot_007_shield-ai.png`  [Shield AI] — Staff Engineer, Data Analysis  — MULTI-LOC tuning case
   - https://jobs.lever.co/shieldai/2f1b420a-125f-4b25-bf1d-0e8605932480
-- [ ] SD `ot_008_juneshine.png`  [JuneShine] — Quality Analyst
+- [x] SD `ot_008_juneshine.png`  [JuneShine] — Quality Analyst
   - https://jobs.lever.co/juneshine/b572206f-35b0-49f2-aeda-b766a4ebb191
-- [ ] SD `ot_009_sda-data-systems.png`  [SDA Data Systems] — Management Analyst II - Cyberspace Workforce Support
+- [x] SD `ot_009_sda-data-systems.png`  [SDA Data Systems] — Management Analyst II - Cyberspace Workforce Support
   - https://jobs.lever.co/sdatasystems.com/37b676e2-7495-478a-9a0f-fb63066466dc
 - [ ]    `ot_010_sosafe.png`  [SoSafe] — Data Analyst
   - https://jobs.lever.co/sosafe/bd1f4a2f-9dcd-4a1b-9c3f-8e6d5c4b3a21
@@ -180,17 +180,17 @@ one-of-many); `MLOC` = multi-location (San Diego is *one* of several
   - https://jobs.lever.co/northstarmedical/4f3d2c1b-0a9e-4d8c-b7f6-1e2d3c4b5a69
 - [ ]    `ot_013_excelerate.png`  [Excelerate] — Senior Data Analyst
   - https://jobs.ashbyhq.com/excelerate/56aed91c-a6b3-4e7e-b49e-625d159dccac
-- [ ]    `ot_014_andela.png`  [Andela] — Data Analyst
+- [x]    `ot_014_andela.png`  [Andela] — Data Analyst
   - https://jobs.ashbyhq.com/andela/4b04f6f7-d1db-4096-9db0-53c31f1195c9
-- [ ]    `ot_015_9am.png`  [9am] — Senior Data Analyst
+- [x]    `ot_015_9am.png`  [9am] — Senior Data Analyst
   - https://jobs.ashbyhq.com/join9am/f9d48bc2-2517-48bb-9c93-ddc80bbef231
-- [ ] SD `ot_016_iambic-therapeutics.png`  [Iambic Therapeutics] — Research Scientist II/Senior, Discovery ML
+- [x] SD `ot_016_iambic-therapeutics.png`  [Iambic Therapeutics] — Research Scientist II/Senior, Discovery ML
   - https://jobs.ashbyhq.com/iambic-therapeutics/9ddc2691-8f3d-491e-ab10-3a96fe32600a
-- [ ]    `ot_017_solace.png`  [Solace] — Associate Data Scientist (College Grad 2027)
+- [x]    `ot_017_solace.png`  [Solace] — Associate Data Scientist (College Grad 2027)
   - https://jobs.ashbyhq.com/solace/77ca492c-4142-4931-beeb-e85d9d0ac443
-- [ ]    `ot_018_infinitus.png`  [Infinitus] — Senior Data Analyst
+- [x]    `ot_018_infinitus.png`  [Infinitus] — Senior Data Analyst
   - https://jobs.ashbyhq.com/infinitus/763851db-d5ba-4222-8402-8a17dbba50ed
-- [ ]    `ot_019_harper-insurance.png`  [Harper Insurance] — Senior Data Analyst
+- [x]    `ot_019_harper-insurance.png`  [Harper Insurance] — Senior Data Analyst
   - https://jobs.ashbyhq.com/harperinsure/3509ecc5-e8c2-43c6-911d-01bd4a984c0f
 
 ## Notes
