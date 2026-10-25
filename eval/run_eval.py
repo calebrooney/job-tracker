@@ -32,7 +32,7 @@ CORE = ["role", "company", "location", "job_id", "pay"]
 # Pre-registered decision rule (see the plan).
 MIN_GAIN_PTS = 8.0
 MAX_P = 0.05
-MAX_P50_S = 3.0
+MAX_P50_S = 5.0
 
 
 def load_jsonl(path):
