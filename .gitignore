@@ -18,5 +18,3 @@ eval/_build_round2_labels.py
 eval/_build_round2_labels.py.bak
 eval/_link_check*.jsonl
 eval/_pdf_text/
-
-/summ
