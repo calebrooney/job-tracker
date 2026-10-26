@@ -10,3 +10,5 @@ scored_at,run,split,key,n,backend,model,prompt_sha1,max_pixels,crop_top,max_toke
 2026-10-25T23:27:09,q25vl7b,test,png,62,local,mlx-community/Qwen2.5-VL-7B-Instruct-4bit,4fc8796fa6,1048576,1.0,160,5ac504a,frozen v1 final,0.0,11.3,11.3,11.3,11.3,79.0,56.5,79.0,80.6,17.7,39.4,13.46,16.12,11.3,0.016,NOT_MET
 2026-10-25T23:27:09,q3vl8b,test,png,62,local,mlx-community/Qwen3-VL-8B-Instruct-4bit,4fc8796fa6,1048576,1.0,160,5ac504a,frozen v1 final,0.0,11.3,11.3,11.3,11.3,77.4,51.6,75.8,83.9,19.4,29.0,8.85,12.01,11.3,0.016,NOT_MET
 2026-10-25T23:27:09,q3vl8b_or,test,png,62,paid,qwen/qwen3-vl-8b-instruct,4fc8796fa6,1048576,1.0,160,5ac504a,frozen v1 final,0.0,8.1,8.1,8.1,8.1,71.0,50.0,66.1,82.3,19.4,26.7,1.69,60.29,8.1,0.062,NOT_MET
+2026-10-26T01:39:59,q3vl4b,dev,png,19,local,mlx-community/Qwen3-VL-4B-Instruct-4bit,4fc8796fa6,1048576,1.0,160,780105e,frozen v1 dev check,0.0,5.3,5.3,5.3,5.3,52.6,36.8,63.2,89.5,42.1,22.2,5.17,6.73,5.3,1.0,NOT_MET
+2026-10-26T01:39:59,q3vl4b,test,png,62,local,mlx-community/Qwen3-VL-4B-Instruct-4bit,4fc8796fa6,1048576,1.0,160,780105e,frozen v1 final,0.0,8.1,8.1,8.1,8.1,74.2,53.2,69.4,82.3,21.0,29.4,5.58,7.16,8.1,0.062,NOT_MET

@@ -34,8 +34,9 @@ LOCAL_MODELS = {
     "qwen25vl3b": "mlx-community/Qwen2.5-VL-3B-Instruct-4bit",  # baseline, ~2 GB
     "qwen25vl7b": "mlx-community/Qwen2.5-VL-7B-Instruct-4bit",  # ~5.7 GB
     "qwen3vl8b": "mlx-community/Qwen3-VL-8B-Instruct-4bit",     # ~5-6 GB
+    "qwen3vl4b": "mlx-community/Qwen3-VL-4B-Instruct-4bit",     # ~3 GB
 }
-DEFAULT_LOCAL_MODEL = "qwen25vl3b"
+DEFAULT_LOCAL_MODEL = "qwen3vl4b"
 # Resolve the env value: an alias maps to its repo id, anything else passes through.
 _local_choice = os.environ.get("VLM_LOCAL_MODEL", DEFAULT_LOCAL_MODEL)
 LOCAL_MODEL = LOCAL_MODELS.get(_local_choice, _local_choice)
