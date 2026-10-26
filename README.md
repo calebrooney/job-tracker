@@ -2,7 +2,7 @@
 
 A simple job application tracker (Flask + Postgres) modeled on the columns in
 `Intern Apps.xlsx`. The web GUI is capture-first: paste a job link or upload a
-screenshot, and it reads the posting (scrape / local OCR), infers the fields,
+screenshot, and it reads the posting (scrape / local VLM / OCR), infers the fields,
 and prefills the form for you to validate instead of typing from scratch.
 
 ## Architecture
@@ -162,13 +162,21 @@ applied
 # or: python cli.py
 ```
 
-## Import existing spreadsheet data (optional)
+## VLM field extraction (`vlm.py`)
 
-Load the current rows from `Sheet1` of the spreadsheet:
+Page 1 of a screenshot/PDF is read by a local vision model (default
+**Qwen3-VL-4B, 4-bit, via mlx-vlm**; free, ~3 GB, downloaded on first use).
+It falls back to OCR + regex on failure. Change it with
+`VLM_LOCAL_MODEL=<alias or HF repo id>` (aliases in `vlm.py`). OpenRouter
+`free`/`paid` backends are also available with `OPENROUTER_API_KEY`.
 
-```bash
-python import_xlsx.py
-```
+Evaluate against `eval/labels.jsonl` with `applied --test`.
+
+## Stored job postings
+
+Every page of a captured PDF/screenshot is rendered to PNG and stored in
+Postgres (`jd_images`), so no local PDF is needed. View them in the web GUI on
+an application's detail page under **JD Pages**.
 
 ## Notes
 
