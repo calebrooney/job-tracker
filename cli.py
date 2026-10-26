@@ -579,7 +579,7 @@ def git_commit():
         return None
 
 
-def run_test(path, backend, run_name=None):
+def run_test(path, backend, run_name=None, note=""):
     """Batch eval: run OCR+regex and the VLM in parallel on each file.
 
     Writes eval/runs/<run>/predictions.jsonl (+ meta.json). Never touches the
@@ -604,6 +604,8 @@ def run_test(path, backend, run_name=None):
                 "max_pixels": vlm.MAX_PIXELS,
                 "crop_top": vlm.CROP_TOP,
                 "max_tokens": vlm.MAX_TOKENS,
+                "note": note,  # what changed in this run vs the previous one
+                "prompt": vlm.PROMPT,  # full text, so any run can be reproduced
                 "started": datetime.now().isoformat(timespec="seconds"),
             }, f, indent=2)
 
@@ -646,10 +648,11 @@ def main():
         help="VLM backend (default: %(default)s)",
     )
     ap.add_argument("--run", help="run folder name for --test (reuse to resume)")
+    ap.add_argument("--note", default="", help="what changed in this --test run (saved in meta.json)")
     args = ap.parse_args()
 
     if args.test:
-        run_test(args.test, args.backend, args.run)
+        run_test(args.test, args.backend, args.run, args.note)
     else:
         capture(args.backend)
 

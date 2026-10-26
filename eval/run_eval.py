@@ -2,11 +2,18 @@
 
 Usage:
   python eval/run_eval.py --init-labels eval/runs/RUN      # build labels skeleton
-  python eval/run_eval.py eval/runs/RUN [--split test]     # score a run
+  python eval/run_eval.py eval/runs/RUN [--split test] [--key png|pdf]   # score a run
+  (--key png is the default, for runs over eval/images; pdf for runs over eval/pdfs)
 
-labels.jsonl (one JSON object per line, keyed by file name):
-  {"file": "a.pdf", "split": "dev|test", "format": "workday", "verified": true,
+labels.jsonl (one JSON object per line; joined to predictions by `pdf` or `png` name):
+  {"pdf": "a.pdf", "png": "a.png" | null, "split": "dev|test", "format": "workday",
+   "verified": true,
    "fields": {"role": ..., "company": ..., "location": ..., "job_id": ..., "pay": ...}}
+(--init-labels is legacy: it writes a `file` key and is not used with the current labels.)
+
+Match rules (see matches()): role/company/job_id exact (case and punctuation ignored);
+location: San Diego labels accept any text containing "San Diego", else exact or same
+first city; pay: prediction holds the label's whole-dollar min and max.
 
 Scores are computed offline from the stored predictions: no models are re-run.
 Arms: regex, vlm, merge (VLM else regex), router (regex first, VLM only if a
@@ -21,6 +28,7 @@ import math
 import os
 import re
 import sys
+from datetime import datetime
 
 # Allow `python eval/run_eval.py` from the project root.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -28,10 +36,13 @@ import parse  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 LABELS = os.path.join(HERE, "labels.jsonl")
+# Append-only experiment log (tracked in git): one row per scoring call.
+LOG = os.path.join(HERE, "experiments.csv")
 CORE = ["role", "company", "location", "job_id", "pay"]
 # Pre-registered decision rule (see the plan).
 MIN_GAIN_PTS = 8.0
 MAX_P = 0.05
+# Latency gate, fixed before seeing results: 5 s (capture runs in the background).
 MAX_P50_S = 5.0
 
 
@@ -54,6 +65,55 @@ def norm(field, value):
             nums.append(val * 1000 if k and val < 1000 else val)
         return tuple(nums) or None
     return re.sub(r"[^a-z0-9]+", " ", text).strip()
+
+
+def pay_ints(value):
+    """Whole-dollar numbers in a pay string (decimals and '$' dropped; 'k' expanded).
+
+    "$20.00/hr - $31.00/hr" -> {20, 31}; "$176.4K" -> {176400}. None if no numbers.
+    """
+    nums = norm("pay", value)  # tuple of floats, or None
+    return {int(n) for n in nums} if nums else None
+
+
+def first_city(value):
+    """Normalized text before the first comma/slash/semicolon ("Boston, MA" -> "boston")."""
+    return norm("location", re.split(r"[,/;]", str(value))[0])
+
+
+def matches(field, pred, lab):
+    """True if the prediction is adequate for this field under the agreed rules.
+
+    role, company, job_id: exact match after case/punctuation normalization.
+    location: if the label is San Diego (or a multi-location posting that includes
+      San Diego), any prediction containing "San Diego" (case-insensitive) matches;
+      otherwise an exact match or the same first city matches.
+    pay: the prediction contains the label's whole-dollar min and max (decimals ignored).
+    Empty vs empty (no value on either side) always matches.
+    """
+    truth = (lab["fields"] or {}).get(field)
+    t_empty, p_empty = norm(field, truth) is None, norm(field, pred) is None
+
+    # San Diego labels (also via all_locations, e.g. a null location on a multi-loc posting).
+    if field == "location":
+        label_text = f"{truth or ''} {lab.get('all_locations') or ''}".lower()
+        if "san diego" in label_text:
+            return not p_empty and "san diego" in str(pred).lower()
+
+    # Otherwise both must be empty, or neither.
+    if t_empty or p_empty:
+        return t_empty and p_empty
+
+    if field == "location":
+        return norm(field, pred) == norm(field, truth) or first_city(pred) == first_city(truth)
+
+    if field == "pay":
+        want, got = pay_ints(truth), pay_ints(pred)
+        if want is None or got is None:
+            return want is None and got is None
+        return min(want) in got and max(want) in got
+
+    return norm(field, pred) == norm(field, truth)
 
 
 def wilson(k, n, z=1.96):
@@ -84,9 +144,17 @@ def pct(values, q):
     return values[min(len(values) - 1, int(round(q / 100 * (len(values) - 1))))]
 
 
+def load_labels(key):
+    """Map predictions' file name -> label row, joining on `key` ("pdf" or "png").
+
+    Rows whose `key` is null (e.g. PDF-only docs have no PNG) are skipped.
+    """
+    return {r[key]: r for r in load_jsonl(LABELS) if r.get(key)}
+
+
 def init_labels(run_dir):
     """Create labels.jsonl entries from a run's VLM output for hand verification."""
-    existing = {r["file"] for r in load_jsonl(LABELS)} if os.path.exists(LABELS) else set()
+    existing = set(load_labels("pdf")) | set(load_labels("png")) if os.path.exists(LABELS) else set()
     added = 0
     with open(LABELS, "a") as out:
         for rec in load_jsonl(os.path.join(run_dir, "predictions.jsonl")):
@@ -126,9 +194,9 @@ def arm_predictions(rec):
     return arms
 
 
-def score(run_dir, split, allow_unverified):
-    """Join predictions to labels, print the report, and write results.csv."""
-    labels = {r["file"]: r for r in load_jsonl(LABELS)}
+def score(run_dir, split, allow_unverified, key, note=""):
+    """Join predictions to labels (on the `key` column), print the report, write results.csv."""
+    labels = load_labels(key)
     recs = []
     for rec in load_jsonl(os.path.join(run_dir, "predictions.jsonl")):
         lab = labels.get(rec["file"])
@@ -153,14 +221,13 @@ def score(run_dir, split, allow_unverified):
     rows = []
     halluc = [0, 0]  # [VLM values not found in OCR, VLM values checked]
     for rec, lab in recs:
-        truth = {k: norm(k, (lab["fields"] or {}).get(k)) for k in CORE}
         arms = arm_predictions(rec)
         # Docs where the VLM failed count as wrong for VLM-derived arms.
         for arm in ("vlm", "merge", "router"):
             arms.setdefault(arm, ({}, rec["regex"]["latency_s"] + rec["vlm"]["latency_s"]))
         ok = {}
         for arm, (fields, latency) in arms.items():
-            ok[arm] = {k: int(norm(k, fields.get(k)) == truth[k]) for k in CORE}
+            ok[arm] = {k: int(matches(k, fields.get(k), lab)) for k in CORE}
             lat[arm].append(latency)
         ok["oracle"] = {k: int(ok["regex"][k] or ok["vlm"][k]) for k in CORE}
         for arm, per_field in ok.items():
@@ -222,6 +289,36 @@ def score(run_dir, split, allow_unverified):
         w.writerows(rows)
     print(f"Per-doc results: {out}")
 
+    # Experiment log: one row per scoring call, in a tracked file, so every
+    # config tried (and every time the test split was scored) stays on record.
+    meta_path = os.path.join(run_dir, "meta.json")
+    meta = json.load(open(meta_path)) if os.path.exists(meta_path) else {}
+    pct_of = lambda arm: round(100 * sum(doc_ok[arm]) / n, 1)
+    row = {
+        "scored_at": datetime.now().isoformat(timespec="seconds"),
+        "run": os.path.basename(run_dir), "split": split, "key": key, "n": n,
+        "backend": meta.get("backend"), "model": meta.get("model"),
+        "prompt_sha1": meta.get("prompt_sha1"), "max_pixels": meta.get("max_pixels"),
+        "crop_top": meta.get("crop_top"), "max_tokens": meta.get("max_tokens"),
+        "git_commit": meta.get("git_commit"),
+        "note": note or meta.get("note", ""),
+        **{f"{arm}_all": pct_of(arm) for arm in ("regex", "vlm", "merge", "router", "oracle")},
+        **{f"vlm_{k}": round(100 * sum(correct["vlm"][k]) / n, 1) for k in CORE},
+        "halluc_pct": round(100 * halluc[0] / halluc[1], 1) if halluc[1] else None,
+        "vlm_p50_s": round(p50, 2), "vlm_p95_s": round(pct(lat["vlm"], 95), 2),
+        "gain_pts": round(gain, 1), "mcnemar_p": round(p, 3),
+        "verdict": "ADOPT" if verdict else "NOT_MET",
+    }
+    with open(os.path.join(run_dir, "metrics.json"), "w") as f:
+        json.dump(row, f, indent=2)  # same numbers, kept next to the run's predictions
+    new_file = not os.path.exists(LOG)
+    with open(LOG, "a", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(row))
+        if new_file:
+            w.writeheader()
+        w.writerow(row)
+    print(f"Logged to {LOG}")
+
 
 def main():
     """CLI entry point."""
@@ -230,13 +327,17 @@ def main():
     ap.add_argument("--init-labels", action="store_true",
                     help="append label stubs (pre-filled from VLM output) for this run")
     ap.add_argument("--split", default="test", choices=["dev", "test", "all"])
+    ap.add_argument("--key", default="png", choices=["pdf", "png"],
+                    help="labels column that holds the run's file names (pdf run vs screenshot run)")
+    ap.add_argument("--note", default="",
+                    help="log note for this scoring (default: the run's meta.json note)")
     ap.add_argument("--allow-unverified", action="store_true",
                     help="score labels not yet marked verified (smoke tests only)")
     args = ap.parse_args()
     if args.init_labels:
         init_labels(args.run_dir)
     else:
-        score(args.run_dir, args.split, args.allow_unverified)
+        score(args.run_dir, args.split, args.allow_unverified, args.key, args.note)
 
 
 if __name__ == "__main__":

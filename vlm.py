@@ -5,7 +5,7 @@ uses extract_both(), which runs OCR+regex and the VLM in parallel and returns
 both outputs with timings so they can be scored against the same labels.
 
 Backends (all OpenAI-compatible chat endpoints, called with `requests`):
-  local - mlx-vlm server (Qwen2.5-VL-3B 4-bit), free and private
+  local - mlx-vlm server (model chosen from LOCAL_MODELS), free and private
   free  - OpenRouter free VLM
   paid  - OpenRouter cheap paid VLM
 """
@@ -28,11 +28,23 @@ import parse
 # Load OPENROUTER_API_KEY etc. from the project .env.
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
+# Local MLX models under test (4-bit). Pick one with VLM_LOCAL_MODEL=<alias>
+# (or a full HF repo id for anything not listed here).
+LOCAL_MODELS = {
+    "qwen25vl3b": "mlx-community/Qwen2.5-VL-3B-Instruct-4bit",  # baseline, ~2 GB
+    "qwen25vl7b": "mlx-community/Qwen2.5-VL-7B-Instruct-4bit",  # ~5.7 GB
+    "qwen3vl8b": "mlx-community/Qwen3-VL-8B-Instruct-4bit",     # ~5-6 GB
+}
+DEFAULT_LOCAL_MODEL = "qwen25vl3b"
+# Resolve the env value: an alias maps to its repo id, anything else passes through.
+_local_choice = os.environ.get("VLM_LOCAL_MODEL", DEFAULT_LOCAL_MODEL)
+LOCAL_MODEL = LOCAL_MODELS.get(_local_choice, _local_choice)
+
 # Pin model ids here (OpenRouter free models rotate often).
 BACKENDS = {
     "local": {
         "url": os.environ.get("VLM_LOCAL_URL", "http://127.0.0.1:8080/v1/chat/completions"),
-        "model": os.environ.get("VLM_LOCAL_MODEL", "mlx-community/Qwen2.5-VL-3B-Instruct-4bit"),
+        "model": LOCAL_MODEL,
         "key_env": None,
     },
     "free": {
@@ -61,17 +73,30 @@ TIMEOUT_S = 60
 PDF_RENDER_SCALE = 2.0
 
 # Compact schema: short keys keep the output (and decode time) small.
-PROMPT = (
-    "Read this job posting. Reply with ONLY one-line minified JSON (no spaces, "
-    "no newlines, flat string values) with keys: "
-    "role, company, location (one string like \"San Diego, CA\"), "
-    "loc_type (onsite|hybrid|remote), "
-    "pay (as written, e.g. $25/hr or $90,000-$110,000), job_id, "
-    "posted (YYYY-MM-DD), deadline (YYYY-MM-DD), dept, "
-    "us_citizen (true if US citizenship is required, else false). "
-    "Use null for anything not visible. No explanation."
-)
+# OG prompt:
+# PROMPT = (
+#     "Read this job posting. Reply with ONLY one-line minified JSON (no spaces, "
+#     "no newlines, flat string values) with keys: "
+#     "role, company, location (one string like \"San Diego, CA\"), "
+#     "loc_type (onsite|hybrid|remote), "
+#     "pay (as written, e.g. $25/hr or $90,000-$110,000), job_id, "
+#     "posted (YYYY-MM-DD), deadline (YYYY-MM-DD), dept, "
+#     "us_citizen (true if US citizenship is required, else false). "
+#     "Use null for anything not visible. No explanation."
+# )
 
+# update v1:
+PROMPT = (
+    "Extract fields from this job posting image. Reply with ONLY one-line minified JSON "
+    "with keys: role, company, location, job_id, pay, loc_type (onsite|hybrid|remote), "
+    "posted (YYYY-MM-DD), deadline (YYYY-MM-DD), dept, us_citizen (true/false). "
+    "Copy role, company, location, job_id and pay EXACTLY as written in the image. "
+    "company is the hiring company's name as shown. "
+    "job_id is the requisition/job ID only if a label like Job ID, Req ID or Requisition is shown. "
+    "pay is the compensation as written, only if the image shows it. "
+    "If a value is not visible, use null. Never guess, never invent, never use placeholders. "
+    "No explanation. If a location has multiple values and contains 'San Diego', use 'San Diego, CA' as the location."
+)
 
 def render_image(path):
     """Return a PIL image of an image file or page 1 of a PDF, sized for the VLM."""
