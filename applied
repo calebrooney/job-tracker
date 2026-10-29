@@ -6,6 +6,6 @@ if [ -x "$ROOT/.venv/bin/applied" ]; then
   exec "$ROOT/.venv/bin/applied" "$@"
 fi
 if [ -x "$ROOT/.venv/bin/python" ]; then
-  exec "$ROOT/.venv/bin/python" "$ROOT/cli.py" "$@"
+  PYTHONPATH="$ROOT/src" exec "$ROOT/.venv/bin/python" -m job_tracker.cli "$@"
 fi
-exec python3 "$ROOT/cli.py" "$@"
+PYTHONPATH="$ROOT/src" exec python3 -m job_tracker.cli "$@"

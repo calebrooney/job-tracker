@@ -1,22 +1,19 @@
 .env
 .venv/
 __pycache__/
-uploads/
+*.egg-info/
+build/
+dist/
 .DS_Store
-
-eval/runs/
 .venv-vlm/
 /plans
+ideas.md
 
 # Eval corpus: keep the folders, ignore the captured images/PDFs.
+eval/runs/
 eval/images/*
 !eval/images/.gitkeep
 eval/pdfs/*
 !eval/pdfs/.gitkeep
-# Dev-only symlinks to eval/images (tuning set; recreate from labels split=dev).
 eval/dev_images/
-# Local eval scratch: helper scripts, link-check dumps, extracted PDF text.
-eval/_build_round2_labels.py
-eval/_build_round2_labels.py.bak
-eval/_link_check*.jsonl
 eval/_pdf_text/

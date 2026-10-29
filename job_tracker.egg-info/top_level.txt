@@ -1,6 +1,0 @@
-app
-cli
-db
-import_xlsx
-parse
-vlm

@@ -8,7 +8,7 @@ and prefills the form for you to validate instead of typing from scratch.
 ## Architecture
 
 ```
-  capture sources                    pipeline (cli.py "applied" · app.py web)
+  capture sources                    pipeline (job_tracker.cli · job_tracker.web)
 ┌─────────────────────┐
 │ job link (URL)      │── parse_link (BeautifulSoup) ──► raw JD text ─┐
 ├─────────────────────┤                                               │
@@ -136,7 +136,7 @@ no link and you press Enter on the media prompt.
 ## Run the web GUI
 
 ```bash
-flask --app app run
+flask --app job_tracker.web run
 ```
 
 Then open http://127.0.0.1:5000
@@ -159,10 +159,10 @@ Then open http://127.0.0.1:5000
 
 ```bash
 applied
-# or: python cli.py
+# or: python -m job_tracker.cli
 ```
 
-## VLM field extraction (`vlm.py`)
+## VLM field extraction (`src/job_tracker/vlm.py`)
 
 Page 1 of a screenshot/PDF is read by a local vision model (default
 **Qwen3-VL-4B, 4-bit, via mlx-vlm**; free, ~3 GB, downloaded on first use).

@@ -18,16 +18,14 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 from urllib.parse import unquote, urlparse
 
-import db
-import parse
-import vlm
+from . import ROOT_DIR, db, parse, vlm
 
 # Screenshots copied here so paths stay project-local (same as the web app).
-UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+UPLOAD_DIR = os.path.join(ROOT_DIR, "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # `applied --test` results (predictions + run metadata) live here.
-EVAL_DIR = os.path.join(os.path.dirname(__file__), "eval")
+EVAL_DIR = os.path.join(ROOT_DIR, "eval")
 
 # Fields compared between VLM prediction and user-confirmed value.
 LOG_FIELDS = [
@@ -572,7 +570,7 @@ def git_commit():
     try:
         out = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
-            capture_output=True, text=True, cwd=os.path.dirname(__file__),
+            capture_output=True, text=True, cwd=ROOT_DIR,
         )
         return out.stdout.strip() or None
     except OSError:

@@ -15,15 +15,13 @@ from flask import Flask, Response, flash, redirect, render_template, request, ur
 from PIL import Image
 from werkzeug.utils import secure_filename
 
-import db
-import parse
-import vlm
+from . import ROOT_DIR, db, parse, vlm
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
 
 # Screenshots uploaded for OCR are stored here.
-UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+UPLOAD_DIR = os.path.join(ROOT_DIR, "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Create the table on startup if needed.

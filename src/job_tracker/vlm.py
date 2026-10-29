@@ -23,10 +23,10 @@ import requests
 from dotenv import load_dotenv
 from PIL import Image
 
-import parse
+from . import ROOT_DIR, parse
 
 # Load OPENROUTER_API_KEY etc. from the project .env.
-load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+load_dotenv(os.path.join(ROOT_DIR, ".env"))
 
 # Local MLX models under test (4-bit). Pick one with VLM_LOCAL_MODEL=<alias>
 # (or a full HF repo id for anything not listed here).
@@ -224,7 +224,7 @@ def ensure_local_server():
 
     if listening():
         return
-    py = os.path.join(os.path.dirname(__file__), ".venv-vlm", "bin", "python")
+    py = os.path.join(ROOT_DIR, ".venv-vlm", "bin", "python")
     if not os.path.exists(py):
         raise RuntimeError("Local VLM not installed: create .venv-vlm and pip install mlx-vlm.")
     print("Starting local VLM server (first run downloads the model)...")

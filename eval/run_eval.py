@@ -31,8 +31,8 @@ import sys
 from datetime import datetime
 
 # Allow `python eval/run_eval.py` from the project root.
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import parse  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
+from job_tracker import parse  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 LABELS = os.path.join(HERE, "labels.jsonl")

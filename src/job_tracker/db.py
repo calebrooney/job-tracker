@@ -8,13 +8,13 @@ import json
 import os
 
 from dotenv import load_dotenv
+from . import ROOT_DIR, parse
 
-# Load .env from the package directory (works no matter what cwd `applied` uses).
-load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+# Load .env from the repository root (works no matter what cwd `applied` uses).
+load_dotenv(os.path.join(ROOT_DIR, ".env"))
 
 import psycopg2
 import psycopg2.extras
-import parse
 
 # Default to a local database named "jobtracker" if none is configured.
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://localhost/jobtracker")

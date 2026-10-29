@@ -21,7 +21,10 @@ dependencies = [
 ]
 
 [project.scripts]
-applied = "cli:main"
+applied = "job_tracker.cli:main"
 
-[tool.setuptools]
-py-modules = ["cli", "db", "parse", "vlm", "app", "import_xlsx"]
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+job_tracker = ["templates/*", "static/*"]
