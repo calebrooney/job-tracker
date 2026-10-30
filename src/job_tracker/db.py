@@ -41,8 +41,8 @@ def init_db():
                 location            TEXT,
                 location_type       TEXT,
                 compensation_type   BOOLEAN,
-                comp_value_salary   NUMERIC,
-                comp_value_hourly   NUMERIC,
+                comp_value_salary   NUMRANGE,
+                comp_value_hourly   NUMRANGE,
                 pay                 TEXT,
                 app_date            DATE,
                 due_date            DATE,
@@ -84,37 +84,63 @@ def init_db():
             ("department", "TEXT"),
             ("us_citizen_required", "BOOLEAN"),
             ("compensation_type", "BOOLEAN"),
-            ("comp_value_salary", "NUMERIC"),
-            ("comp_value_hourly", "NUMERIC"),
+            ("comp_value_salary", "NUMRANGE"),
+            ("comp_value_hourly", "NUMRANGE"),
         ]:
             cur.execute(
                 f"ALTER TABLE applications ADD COLUMN IF NOT EXISTS {col} {typ}"
             )
 
-        # Backfill compensation fields from existing legacy pay column if needed
-        cur.execute(
-            """
-            SELECT column_name FROM information_schema.columns
-            WHERE table_name = 'applications' AND column_name = 'pay'
-            """
-        )
-        if cur.fetchone():
+        # Compensation is stored as a range so a posted range ("$82,625 -
+        # $103,653") is kept intact. Older DBs have NUMERIC columns: promote
+        # them to NUMRANGE, turning each stored number into a point range.
+        for col in ("comp_value_salary", "comp_value_hourly"):
             cur.execute(
                 """
-                SELECT id, pay FROM applications
-                WHERE pay IS NOT NULL AND comp_value_salary IS NULL
-                """
+                SELECT data_type FROM information_schema.columns
+                WHERE table_name = 'applications' AND column_name = %s
+                """,
+                (col,),
             )
-            for row_id, pay_str in cur.fetchall():
-                c_type, c_sal, c_hour = parse.process_compensation(pay_str)
+            row = cur.fetchone()
+            if row and row[0] != "numrange":
                 cur.execute(
+                    f"""
+                    ALTER TABLE applications
+                    ALTER COLUMN {col} TYPE NUMRANGE
+                    USING CASE WHEN {col} IS NULL THEN NULL
+                               ELSE numrange({col}, {col}, '[]') END
                     """
-                    UPDATE applications
-                    SET compensation_type = %s, comp_value_salary = %s, comp_value_hourly = %s
-                    WHERE id = %s
-                    """,
-                    (c_type, c_sal, c_hour, row_id),
                 )
+
+        # Backfill the ranges from the raw `pay` text. The old parser averaged
+        # the endpoints, so rows saved as "$82,625 - $103,653" hold 93139;
+        # re-parsing restores the real range (a no-op once they agree).
+        cur.execute(
+            """
+            SELECT id, pay, compensation_type, comp_value_salary, comp_value_hourly
+            FROM applications WHERE pay IS NOT NULL
+            """
+        )
+        for row_id, pay_str, old_type, old_sal, old_hour in cur.fetchall():
+            c_type, c_sal, c_hour = parse.process_compensation(
+                pay_str, comp_type=old_type
+            )
+            if c_sal is None:
+                continue
+            if (
+                parse.range_endpoints(c_sal) == parse.range_endpoints(old_sal)
+                and parse.range_endpoints(c_hour) == parse.range_endpoints(old_hour)
+            ):
+                continue
+            cur.execute(
+                """
+                UPDATE applications
+                SET compensation_type = %s, comp_value_salary = %s, comp_value_hourly = %s
+                WHERE id = %s
+                """,
+                (c_type, c_sal, c_hour, row_id),
+            )
 
 
 def add_application(data):
@@ -140,6 +166,38 @@ def add_application(data):
             values,
         )
         return cur.fetchone()[0]
+
+
+# Columns the detail page may edit inline. The job description text, its
+# source and the jd_images table belong to the JD capture widget, so they are
+# deliberately left out (an inline edit can never touch them).
+EDITABLE_COLUMNS = (
+    "role", "company", "department", "location", "location_type",
+    "compensation_type", "comp_value_salary", "comp_value_hourly", "pay",
+    "app_date", "due_date", "posted_date", "application_deadline",
+    "job_id", "link", "us_citizen_required", "energy_related", "status",
+)
+
+
+def update_application(app_id, updates):
+    """Update the given columns of one application; True if the row exists.
+
+    Only EDITABLE_COLUMNS may be written (anything else raises ValueError).
+    Compensation is passed as a group (compensation_type + both ranges + pay)
+    so the derived ranges stay in sync with the raw `pay` text.
+    """
+    unknown = set(updates) - set(EDITABLE_COLUMNS)
+    if unknown:
+        raise ValueError(f"Not editable: {', '.join(sorted(unknown))}")
+    if not updates:
+        return get_application(app_id) is not None
+    assignments = ", ".join(f"{col} = %s" for col in updates)
+    with get_connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            f"UPDATE applications SET {assignments} WHERE id = %s",
+            [*updates.values(), app_id],
+        )
+        return cur.rowcount > 0
 
 
 def delete_application(app_id):

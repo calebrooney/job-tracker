@@ -136,7 +136,8 @@ no link and you press Enter on the media prompt.
 ## Run the web GUI
 
 ```bash
-flask --app job_tracker.web run
+source .venv/bin/activate
+flask --app job_tracker.web run --debug
 ```
 
 Then open http://127.0.0.1:5000
@@ -152,6 +153,10 @@ Then open http://127.0.0.1:5000
   3. Validate/edit the form and save. The **application date defaults to today**
      (editable for backfilling older applications).
   - Prefer to type it all yourself? Use the "Skip — enter details manually" link.
+- **Edit in place** on an application's detail page: click any value (role,
+  company, location, dates, status, pay, ...), change it, and it saves on blur
+  (Enter saves too, Escape reverts) via `POST /app/<id>/field`. Pay is edited as
+  a range (`$82,625 - $103,653`), saved together with its salary/hourly type.
 - An application's detail page still lets you (re)capture the job description
   from a link or screenshot.
 
@@ -183,3 +188,9 @@ an application's detail page under **JD Pages**.
 - JS-heavy job boards (Workday, Handshake) may return little text from plain
   link scraping; the screenshot + OCR path is the reliable fallback.
 - Extracted job description text is stored raw (no LLM cleanup).
+- Pay is stored as a Postgres `numrange` (`comp_value_salary`,
+  `comp_value_hourly`), so a posted range like `$82,625 - $103,653` keeps both
+  endpoints instead of being averaged. Hourly input is also annualized
+  (`* 2080`) into `comp_value_salary`. The raw text the user typed stays in
+  `pay`, and `init_db()` re-derives the ranges from it on startup, converting
+  older `numeric` columns as it goes.

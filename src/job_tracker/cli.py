@@ -457,25 +457,23 @@ def capture(backend):
         "Compensation type", ["salary", "hourly"], default_comp_type
     )
 
+    # Default is the whole range as text ("82625 - 103653") so a posted range
+    # is accepted as-is; the parser keeps both endpoints.
     default_val = None
     if comp_type_choice == "hourly":
-        if data.get("comp_value_hourly") is not None:
-            h_val = float(data["comp_value_hourly"])
-            default_val = str(int(h_val) if h_val.is_integer() else h_val)
-        elif data.get("comp_value"):
-            default_val = str(data.get("comp_value"))
-        elif data.get("pay"):
-            default_val = str(data.get("pay"))
-        val_prompt = "Hourly rate ($/hr)"
+        default_val = (
+            parse.range_text(data.get("comp_value_hourly"))
+            or data.get("comp_value")
+            or data.get("pay")
+        )
+        val_prompt = "Hourly rate ($/hr, may be a range)"
     else:
-        if data.get("comp_value_salary") is not None:
-            s_val = float(data["comp_value_salary"])
-            default_val = str(int(s_val) if s_val.is_integer() else s_val)
-        elif data.get("comp_value"):
-            default_val = str(data.get("comp_value"))
-        elif data.get("pay"):
-            default_val = str(data.get("pay"))
-        val_prompt = "Annual salary ($/yr)"
+        default_val = (
+            parse.range_text(data.get("comp_value_salary"))
+            or data.get("comp_value")
+            or data.get("pay")
+        )
+        val_prompt = "Annual salary ($/yr, may be a range)"
 
     comp_val_str = ask_text(val_prompt, default_val)
     if comp_val_str:

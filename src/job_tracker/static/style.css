@@ -597,6 +597,107 @@ tbody tr:last-child td {
   word-break: break-word;
 }
 
+/* Inline editing (detail page): fields look like text until hovered/focused */
+.edit-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.edit-sep {
+  color: var(--text-faint);
+  padding: 0 2px;
+}
+
+.inline-input {
+  width: 100%;
+  min-width: 0;
+  padding: 2px 6px;
+  margin-left: -6px;
+  font: inherit;
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.inline-input:hover {
+  background: var(--surface-inset);
+  border-color: var(--border-strong);
+}
+
+.inline-input:focus {
+  background: var(--surface);
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.inline-input::placeholder {
+  color: var(--text-faint);
+}
+
+.meta-item .inline-input {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.inline-select {
+  width: auto;
+  padding-right: 4px;
+  cursor: pointer;
+}
+
+.inline-title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.inline-subtitle {
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+.detail-heading {
+  min-width: 0;
+}
+
+.comp-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.comp-note:empty {
+  display: none;
+}
+
+.edit-wrap.is-saving .inline-input {
+  opacity: 0.55;
+}
+
+.edit-toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 50;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  background: #0f172a;
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-md);
+}
+
+.edit-toast.is-error {
+  background: var(--danger);
+}
+
 /* Job Description Box */
 .jd-viewer {
   background: var(--surface-inset);

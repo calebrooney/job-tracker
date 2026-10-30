@@ -7,6 +7,7 @@ regex. Best-effort — user always validates before save.
 """
 
 import re
+from decimal import Decimal
 from urllib.parse import parse_qs, urlparse
 
 import requests
@@ -134,45 +135,157 @@ def _pay(text):
     return m.group(0).strip() if m else None
 
 
-def parse_compensation_val(val):
-    """Extract a numeric compensation figure from a string (handling ranges and k suffix)."""
+# A number in a pay string: thousands separators, cents, optional "k" suffix.
+_NUM_TOKEN = re.compile(r"(\d+(?:,\d{3})*(?:\.\d+)?)(\s*[kK])?")
+# Text between two numbers that makes them a range ("-", "–", "to", "through"),
+# allowing the currency symbol of the second figure ("$82,625 - $103,653").
+_RANGE_BETWEEN = re.compile(r"^\s*(?:-|\u2013|\u2014|to|through)\s*\$?\s*$", re.I)
+# A stored numrange literal, e.g. "[82625,103653]" or "[40320,)".
+_RANGE_LITERAL = re.compile(r"^\s*[\[(]\s*([^,]*?)\s*,\s*([^\])]*?)\s*[\])]\s*$")
+
+
+def parse_compensation_range(val):
+    """Return (low, high) from a pay string, or None when it holds no number.
+
+    A posted range keeps both endpoints -- "$82,625 - $103,653" gives
+    (82625.0, 103653.0) -- instead of collapsing to an average. A single
+    figure becomes a point range (low == high), and a "k" suffix is expanded
+    ($140k -> 140000). Endpoints are returned low-first.
+    """
     if val is None:
         return None
-    if isinstance(val, (int, float)):
-        return float(val)
-    s = str(val).strip()
-    if not s:
+    if isinstance(val, (int, float, Decimal)):
+        return float(val), float(val)
+    text = str(val).strip()
+    if not text:
         return None
-    # Find all numeric numbers (with optional k/K or decimals)
-    matches = re.findall(r"(\d+(?:,\d+)*(?:\.\d+)?)\s*([kK])?", s)
-    if not matches:
+
+    tokens = []
+    for m in _NUM_TOKEN.finditer(text):
+        num = float(m.group(1).replace(",", ""))
+        if m.group(2):
+            num *= 1000
+        tokens.append((num, m))
+    if not tokens:
         return None
-    nums = []
-    for num_str, k_suffix in matches:
-        clean_num = float(num_str.replace(",", ""))
-        if k_suffix:
-            clean_num *= 1000
-        nums.append(clean_num)
-    if not nums:
+
+    first = tokens[0][0]
+    # Only the two numbers around an explicit separator are the range; other
+    # numbers in the string ("2080 hours") are ignored rather than averaged in.
+    if len(tokens) > 1 and _RANGE_BETWEEN.match(
+        text[tokens[0][1].end():tokens[1][1].start()]
+    ):
+        low, high = first, tokens[1][0]
+        return round(min(low, high), 2), round(max(low, high), 2)
+    return round(first, 2), round(first, 2)
+
+
+def _num_text(value):
+    """Render a number for a numrange literal (no thousands separators)."""
+    num = round(float(value), 2)
+    return str(int(num)) if num.is_integer() else f"{num:.2f}"
+
+
+def numrange_literal(low, high=None):
+    """Build a Postgres numrange literal with inclusive bounds, e.g. "[82625,103653]"."""
+    if low is None:
         return None
-    # If range, use average of the values
-    return round(sum(nums) / len(nums), 2)
+    high = low if high is None else high
+    low, high = sorted((round(float(low), 2), round(float(high), 2)))
+    return f"[{_num_text(low)},{_num_text(high)}]"
+
+
+def range_endpoints(val):
+    """Return (low, high) for a stored pay range, or None when there is none.
+
+    Accepts psycopg2's NumericRange (what the DB hands back), the literal text
+    form ("[82625,103653]") and plain numbers (legacy rows). Open-ended bounds
+    stay None and an empty range returns None.
+    """
+    if val is None or isinstance(val, bool):
+        return None
+    if isinstance(val, (int, float, Decimal)):
+        return float(val), float(val)
+    # Check the class before touching the instance so an unset value (Jinja's
+    # Undefined in a template) returns None instead of raising. psycopg2 hands
+    # back a NumericRange for numrange columns.
+    cls = type(val)
+    if hasattr(cls, "bounds") and hasattr(cls, "lower") and hasattr(cls, "upper"):
+        if getattr(val, "isempty", False):
+            return None
+        low, high = val.lower, val.upper
+        return (
+            float(low) if low is not None else None,
+            float(high) if high is not None else None,
+        )
+    match = _RANGE_LITERAL.match(str(val))
+    if match:
+        low, high = match.groups()
+        return (float(low) if low else None, float(high) if high else None)
+    try:  # plain number from an older schema
+        num = float(str(val).replace(",", "").lstrip("$"))
+    except ValueError:
+        return None
+    return num, num
+
+
+def _fmt_money(value):
+    """Format one endpoint as "$82,625" (cents only when present)."""
+    return f"${value:,.2f}" if round(value, 2) != int(value) else f"${int(value):,}"
+
+
+def format_range(val, per="yr"):
+    """Display text for a stored pay range, e.g. "$82,625 - $103,653/yr".
+
+    `per` is the period suffix ("yr", "hr"), or None to leave it off.
+    """
+    span = range_endpoints(val)
+    if span is None:
+        return "-"
+    low, high = span
+    suffix = f"/{per}" if per else ""
+    if low is None and high is None:
+        return "-"
+    if low is None:
+        return f"up to {_fmt_money(high)}{suffix}"
+    if high is None:
+        return f"{_fmt_money(low)}+{suffix}"
+    if low == high:
+        return f"{_fmt_money(low)}{suffix}"
+    return f"{_fmt_money(low)} - {_fmt_money(high)}{suffix}"
+
+
+def range_text(val):
+    """Plain "low - high" text for prefilling an input (None when empty)."""
+    span = range_endpoints(val)
+    if span is None:
+        return None
+    low, high = span
+    if low is None or high is None:
+        return _num_text(low if low is not None else high)
+    if low == high:
+        return _num_text(low)
+    return f"{_num_text(low)} - {_num_text(high)}"
 
 
 def process_compensation(raw_val, comp_type=None):
-    """Convert raw input into boolean compensation_type, salary value, and hourly value.
+    """Convert raw input into (compensation_type, salary range, hourly range).
 
     compensation_type: True = salary, False = hourly.
-    comp_value_salary: heuristic conversion (hourly * 2080) if input is hourly.
-    comp_value_hourly: numeric rate if hourly, None if salary.
+    comp_value_salary / comp_value_hourly are Postgres numrange literals with
+    inclusive bounds ("[82625,103653]"), so a posted range is stored as-is
+    instead of being averaged into a single number.
+    comp_value_salary is annualized (hourly * 2080) when the input is hourly,
+    so salaries stay comparable; comp_value_hourly is None for salary input.
     """
     if raw_val is None or str(raw_val).strip() == "":
         return None, None, None
 
-    # Parse numeric amount
-    num = parse_compensation_val(raw_val)
-    if num is None:
+    # Parse the range endpoints (single values become point ranges).
+    span = parse_compensation_range(raw_val)
+    if span is None:
         return None, None, None
+    low, high = span
 
     # Determine type if not explicitly specified
     raw_str = str(raw_val).lower()
@@ -190,16 +303,18 @@ def process_compensation(raw_val, comp_type=None):
             is_salary = False
         elif re.search(r"\b(year|yr|annually|annual|/yr|k)\b", raw_str):
             is_salary = True
-        elif num < 250:
+        elif max(low, high) < 250:
             # Low numbers without k suffix are typically hourly wages
             is_salary = False
 
     if is_salary:
-        return True, round(num, 2), None
-    else:
-        # Standard full-time heuristic: 40 hrs/wk * 52 wks = 2080 hrs/yr
-        salary_val = round(num * 2080, 2)
-        return False, salary_val, round(num, 2)
+        return True, numrange_literal(low, high), None
+    # Standard full-time heuristic: 40 hrs/wk * 52 wks = 2080 hrs/yr
+    return (
+        False,
+        numrange_literal(low * 2080, high * 2080),
+        numrange_literal(low, high),
+    )
 
 
 def _city_st(text):
@@ -303,13 +418,8 @@ def _shared_from_text(text):
     """Fill fields that are shared across all formats."""
     raw_pay = _pay(text)
     comp_type, val_salary, val_hourly = process_compensation(raw_pay)
-    comp_val = None
-    if comp_type is False and val_hourly is not None:
-        comp_val = str(val_hourly)
-    elif comp_type is True and val_salary is not None:
-        comp_val = str(int(val_salary) if val_salary.is_integer() else val_salary)
-    elif raw_pay:
-        comp_val = raw_pay
+    # Prefill text for the form input: the range as typed in the posting.
+    comp_val = range_text(val_hourly if comp_type is False else val_salary) or raw_pay
 
     return {
         "location_type": _location_type(text),

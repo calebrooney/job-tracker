@@ -68,7 +68,7 @@
         </div>
         <div class="form-group">
           <label for="comp_value">Compensation Amount</label>
-          <input type="text" id="comp_value" name="comp_value" value="{{ data.comp_value or (data.comp_value_hourly if data.compensation_type is sameas false else data.comp_value_salary) or data.pay or '' }}" placeholder="e.g. 125000, $140k/yr, or 50/hr">
+          <input type="text" id="comp_value" name="comp_value" value="{{ data.comp_value or (data.comp_value_hourly|range_text if data.compensation_type is sameas false else data.comp_value_salary|range_text) or data.pay or '' }}" placeholder="e.g. 125000, $82,625 - $103,653, or 40-50/hr">
         </div>
       </div>
     </div>

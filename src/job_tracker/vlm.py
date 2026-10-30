@@ -189,17 +189,15 @@ def _to_fields(raw):
     us = raw.get("us_citizen")
     fields["us_citizen_required"] = us if isinstance(us, bool) else None
 
-    # Pay: keep the raw string, derive the salary/hourly split like the regex path.
+    # Pay: keep the raw string, derive the salary/hourly ranges like the regex
+    # path (a posted range keeps both endpoints).
     pay = _clean(raw.get("pay"))
     fields["pay"] = pay
     c_type, c_sal, c_hour = parse.process_compensation(pay)
     fields["compensation_type"] = c_type
     fields["comp_value_salary"] = c_sal
     fields["comp_value_hourly"] = c_hour
-    if c_type is False and c_hour is not None:
-        fields["comp_value"] = str(c_hour)
-    elif c_type is True and c_sal is not None:
-        fields["comp_value"] = str(int(c_sal) if float(c_sal).is_integer() else c_sal)
+    fields["comp_value"] = parse.range_text(c_hour if c_type is False else c_sal) or pay
     return fields
 
 

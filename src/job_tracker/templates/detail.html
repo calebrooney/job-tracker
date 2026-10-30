@@ -6,11 +6,24 @@
   </div>
 
   <div class="detail-header">
-    <div>
-      <h1 class="detail-title">{{ app.role or "Untitled Role" }}</h1>
+    <div class="detail-heading">
+      <div class="edit-wrap" data-edit data-field="role" data-kind="text">
+        <input class="inline-input inline-title" type="text" name="role"
+               value="{{ app.role or '' }}" placeholder="Untitled Role"
+               aria-label="Role title">
+      </div>
       <p class="detail-subtitle">
-        {{ app.company or "Unknown Company" }}
-        {% if app.department %}&bull; {{ app.department }}{% endif %}
+        <span class="edit-wrap" data-edit data-field="company" data-kind="text">
+          <input class="inline-input inline-subtitle" type="text" name="company"
+                 value="{{ app.company or '' }}" placeholder="Unknown Company"
+                 aria-label="Company">
+        </span>
+        <span class="edit-sep">&bull;</span>
+        <span class="edit-wrap" data-edit data-field="department" data-kind="text">
+          <input class="inline-input inline-subtitle" type="text" name="department"
+                 value="{{ app.department or '' }}" placeholder="Add department"
+                 aria-label="Department">
+        </span>
       </p>
     </div>
     <div style="display: flex; align-items: center; gap: 10px;">
@@ -34,65 +47,123 @@
     <div class="meta-grid">
       <div class="meta-item">
         <span class="meta-label">Location</span>
-        <span class="meta-value">
-          {{ app.location or "Not specified" }}
-          {% if app.location_type %}({{ app.location_type|capitalize }}){% endif %}
-        </span>
+        <div class="edit-wrap" data-edit data-field="location" data-kind="text">
+          <input class="inline-input" type="text" name="location"
+                 value="{{ app.location or '' }}" placeholder="Not specified"
+                 aria-label="Location">
+        </div>
+      </div>
+
+      <div class="meta-item">
+        <span class="meta-label">Workplace Type</span>
+        <div class="edit-wrap" data-edit data-field="location_type" data-kind="select">
+          <select class="inline-input inline-select" name="location_type" aria-label="Workplace type">
+            <option value="" {% if not app.location_type %}selected{% endif %}>Not specified</option>
+            {% for t in location_types %}
+            <option value="{{ t }}" {% if app.location_type == t %}selected{% endif %}>{{ t|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </div>
       </div>
 
       <div class="meta-item">
         <span class="meta-label">Compensation</span>
-        <span class="meta-value">
-          {{ app.comp_value_salary|format_salary }}
-          {% if app.compensation_type is sameas false and app.comp_value_hourly %}
-            <span class="subtext">(${{"%.2f"|format(app.comp_value_hourly)}}/hr)</span>
-          {% elif app.compensation_type is sameas true and app.comp_value_salary %}
-            <span class="subtext">(Salary)</span>
-          {% endif %}
-        </span>
+        <div class="edit-wrap" data-edit data-field="compensation" data-kind="comp">
+          <div class="comp-row">
+            <select class="inline-input inline-select comp-type" name="compensation_type"
+                    aria-label="Compensation type">
+              <option value="salary" {% if app.compensation_type is not sameas false %}selected{% endif %}>Salary</option>
+              <option value="hourly" {% if app.compensation_type is sameas false %}selected{% endif %}>Hourly</option>
+            </select>
+            <input class="inline-input comp-value" type="text" name="comp_value"
+                   value="{{ (app.comp_value_hourly if app.compensation_type is sameas false else app.comp_value_salary)|pay_text }}"
+                   placeholder="e.g. $82,625 - $103,653" aria-label="Compensation amount">
+          </div>
+          <span class="subtext comp-note" data-comp-note>{{ app|comp_note }}</span>
+        </div>
       </div>
 
       <div class="meta-item">
         <span class="meta-label">Date Applied</span>
-        <span class="meta-value">{{ app.app_date or "-" }}</span>
+        <div class="edit-wrap" data-edit data-field="app_date" data-kind="date">
+          <input class="inline-input" type="date" name="app_date"
+                 value="{{ app.app_date or '' }}" aria-label="Date applied">
+        </div>
       </div>
 
       <div class="meta-item">
         <span class="meta-label">Due / Expected Response</span>
-        <span class="meta-value">{{ app.due_date or "-" }}</span>
+        <div class="edit-wrap" data-edit data-field="due_date" data-kind="date">
+          <input class="inline-input" type="date" name="due_date"
+                 value="{{ app.due_date or '' }}" aria-label="Due date">
+        </div>
       </div>
 
       <div class="meta-item">
         <span class="meta-label">Date Posted</span>
-        <span class="meta-value">{{ app.posted_date or "-" }}</span>
+        <div class="edit-wrap" data-edit data-field="posted_date" data-kind="date">
+          <input class="inline-input" type="date" name="posted_date"
+                 value="{{ app.posted_date or '' }}" aria-label="Date posted">
+        </div>
       </div>
 
       <div class="meta-item">
         <span class="meta-label">Application Deadline</span>
-        <span class="meta-value">{{ app.application_deadline or "-" }}</span>
+        <div class="edit-wrap" data-edit data-field="application_deadline" data-kind="date">
+          <input class="inline-input" type="date" name="application_deadline"
+                 value="{{ app.application_deadline or '' }}" aria-label="Application deadline">
+        </div>
       </div>
 
       <div class="meta-item">
         <span class="meta-label">Job / Requisition ID</span>
-        <span class="meta-value">{{ app.job_id or "-" }}</span>
+        <div class="edit-wrap" data-edit data-field="job_id" data-kind="text">
+          <input class="inline-input" type="text" name="job_id"
+                 value="{{ app.job_id or '' }}" placeholder="Add job id"
+                 aria-label="Job or requisition id">
+        </div>
       </div>
 
       <div class="meta-item">
         <span class="meta-label">US Citizen Required</span>
-        <span class="meta-value">
-          {% if app.us_citizen_required is none %}
-            Not specified
-          {% elif app.us_citizen_required %}
-            Yes
-          {% else %}
-            No
-          {% endif %}
-        </span>
+        <div class="edit-wrap" data-edit data-field="us_citizen_required" data-kind="select">
+          <select class="inline-input inline-select" name="us_citizen_required"
+                  aria-label="US citizen required">
+            <option value="" {% if app.us_citizen_required is none %}selected{% endif %}>Not specified</option>
+            <option value="yes" {% if app.us_citizen_required is sameas true %}selected{% endif %}>Yes</option>
+            <option value="no" {% if app.us_citizen_required is sameas false %}selected{% endif %}>No</option>
+          </select>
+        </div>
       </div>
 
       <div class="meta-item">
         <span class="meta-label">Energy Related</span>
-        <span class="meta-value">{{ "Yes" if app.energy_related else "No" }}</span>
+        <div class="edit-wrap" data-edit data-field="energy_related" data-kind="select">
+          <select class="inline-input inline-select" name="energy_related" aria-label="Energy related">
+            <option value="no" {% if not app.energy_related %}selected{% endif %}>No</option>
+            <option value="yes" {% if app.energy_related %}selected{% endif %}>Yes</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="meta-item">
+        <span class="meta-label">Status</span>
+        <div class="edit-wrap" data-edit data-field="status" data-kind="select">
+          <select class="inline-input inline-select" name="status" aria-label="Status">
+            {% for s in statuses %}
+            <option value="{{ s }}" {% if (app.status or 'applied') == s %}selected{% endif %}>{{ s|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="meta-item">
+        <span class="meta-label">Posting Link</span>
+        <div class="edit-wrap" data-edit data-field="link" data-kind="text">
+          <input class="inline-input" type="text" name="link"
+                 value="{{ app.link or '' }}" placeholder="https://..."
+                 aria-label="Job posting link">
+        </div>
       </div>
     </div>
   </div>
@@ -157,4 +228,130 @@
     </form>
   </div>
 </div>
+
+<div id="edit-toast" class="edit-toast" hidden></div>
+
+<script>
+  // Inline edits: every [data-edit] field saves itself to /app/<id>/field.
+  // Text inputs save on blur (Enter blurs, Escape reverts); selects and dates
+  // save on change; the compensation pair saves when its focus leaves it.
+  (function () {
+    const appId = {{ app.id }};
+    const toast = document.getElementById('edit-toast');
+    const badge = document.querySelector('.detail-header .status-badge');
+    let toastTimer = null;
+
+    function notify(message, isError) {
+      toast.textContent = message;
+      toast.classList.toggle('is-error', !!isError);
+      toast.hidden = false;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toast.hidden = true; }, isError ? 4000 : 1400);
+    }
+
+    async function post(payload) {
+      const resp = await fetch('/app/' + appId + '/field', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const body = await resp.json().catch(function () {
+        return { ok: false, error: 'Save failed.' };
+      });
+      if (!resp.ok || !body.ok) throw new Error(body.error || 'Save failed.');
+      return body;
+    }
+
+    // `state` serializes what is on screen, `restore` puts a saved state back.
+    function wire(wrap, handlers) {
+      let saved = handlers.state();
+      let busy = false;
+
+      async function commit() {
+        const next = handlers.state();
+        if (busy || next === saved) return;
+        busy = true;
+        wrap.classList.add('is-saving');
+        try {
+          const body = await post(handlers.payload(next));
+          if (handlers.apply) handlers.apply(body);
+          // Read the state after apply(), so a value the server normalized
+          // ("82625 - 103653" -> "$82,625 - $103,653") counts as saved.
+          saved = handlers.state();
+          notify('Saved');
+        } catch (err) {
+          handlers.restore(saved);
+          notify(err.message, true);
+        } finally {
+          busy = false;
+          wrap.classList.remove('is-saving');
+        }
+      }
+
+      const kind = wrap.dataset.kind;
+
+      if (kind === 'comp') {
+        wrap.querySelector('.comp-type').addEventListener('change', commit);
+        const amount = wrap.querySelector('.comp-value');
+        amount.addEventListener('blur', commit);
+        amount.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') amount.blur();
+          if (e.key === 'Escape') { handlers.restore(saved); amount.blur(); }
+        });
+        return;
+      }
+
+      const input = wrap.querySelector('input, select');
+      if (kind === 'select' || kind === 'date') {
+        input.addEventListener('change', commit);
+      } else {
+        input.addEventListener('blur', commit);
+        input.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') input.blur();
+          if (e.key === 'Escape') { handlers.restore(saved); input.blur(); }
+        });
+      }
+    }
+
+    document.querySelectorAll('[data-edit]').forEach(function (wrap) {
+      const field = wrap.dataset.field;
+
+      if (wrap.dataset.kind === 'comp') {
+        const typeSel = wrap.querySelector('.comp-type');
+        const amount = wrap.querySelector('.comp-value');
+        const note = wrap.querySelector('[data-comp-note]');
+        wire(wrap, {
+          state: function () { return JSON.stringify([typeSel.value, amount.value]); },
+          restore: function (saved) {
+            const pair = JSON.parse(saved);
+            typeSel.value = pair[0];
+            amount.value = pair[1];
+          },
+          payload: function (state) {
+            const pair = JSON.parse(state);
+            return { field: field, type: pair[0], value: pair[1] };
+          },
+          apply: function (body) {
+            amount.value = body.comp_value;
+            note.textContent = body.comp_note;
+          }
+        });
+        return;
+      }
+
+      const input = wrap.querySelector('input, select');
+      wire(wrap, {
+        state: function () { return input.value; },
+        restore: function (saved) { input.value = saved; },
+        payload: function (value) { return { field: field, value: value }; },
+        apply: function (body) {
+          if (field === 'status' && badge) {
+            badge.textContent = body.value;
+            badge.className = 'status-badge status-' + body.value;
+          }
+        }
+      });
+    });
+  })();
+</script>
 {% endblock %}

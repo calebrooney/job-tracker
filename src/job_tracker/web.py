@@ -11,7 +11,16 @@ import io
 import os
 from datetime import date
 
-from flask import Flask, Response, flash, redirect, render_template, request, url_for
+from flask import (
+    Flask,
+    Response,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 from PIL import Image
 from werkzeug.utils import secure_filename
 
@@ -30,16 +39,45 @@ db.init_db()
 
 @app.template_filter("format_salary")
 def format_salary(val):
-    """Format numeric salary for display in salary form (e.g. $120,000/yr)."""
-    if val is None or str(val).strip() == "":
-        return "-"
-    try:
-        num = float(val)
-        if num.is_integer():
-            return f"${int(num):,}/yr"
-        return f"${num:,.2f}/yr"
-    except (ValueError, TypeError):
-        return str(val)
+    """Format a stored annual pay range for display (e.g. $82,625 - $103,653/yr)."""
+    return parse.format_range(val, per="yr")
+
+
+@app.template_filter("format_hourly")
+def format_hourly(val):
+    """Format a stored hourly pay range for display (e.g. $40 - $50/hr)."""
+    return parse.format_range(val, per="hr")
+
+
+@app.template_filter("range_text")
+def range_text(val):
+    """Plain "low - high" text, for prefilling the compensation input."""
+    return parse.range_text(val) or ""
+
+
+@app.template_filter("pay_text")
+def pay_text(val):
+    """Inline-edit value for a pay range: "$82,625 - $103,653" (no period)."""
+    return "" if parse.range_endpoints(val) is None else parse.format_range(val, per=None)
+
+
+def _comp_note(app_row):
+    """Subtext under the inline compensation field (period / annualized rate)."""
+    if app_row.get("compensation_type") is False:
+        hourly = parse.format_range(app_row.get("comp_value_hourly"), per=None)
+        salary = parse.format_range(app_row.get("comp_value_salary"), per=None)
+        if parse.range_endpoints(app_row.get("comp_value_hourly")) is None:
+            return ""
+        return f"as posted: {hourly}/hr · {salary}/yr"
+    if parse.range_endpoints(app_row.get("comp_value_salary")) is None:
+        return ""
+    return "per year"
+
+
+@app.template_filter("comp_note")
+def comp_note(app_row):
+    """Template side of _comp_note (the inline save endpoint reuses it)."""
+    return _comp_note(app_row)
 
 
 @app.route("/")
@@ -223,6 +261,112 @@ def save():
     return redirect(url_for("detail", app_id=app_id))
 
 
+# Fields the detail page edits inline, one at a time. Compensation is saved as
+# a group (type + amount) because both ranges are derived from the raw `pay`
+# text, which keeps them in sync with the startup backfill in db.init_db().
+EDIT_STRING_FIELDS = {"role", "company", "department", "location", "job_id", "link"}
+EDIT_REQUIRED_FIELDS = {"role", "company"}
+EDIT_OPTIONAL_DATES = {"due_date", "posted_date", "application_deadline"}
+EDIT_FIELDS = EDIT_STRING_FIELDS | EDIT_OPTIONAL_DATES | {
+    "app_date", "location_type", "status", "us_citizen_required", "energy_related",
+}
+
+
+def _edit_date(raw, label):
+    """Parse a date input value; raises ValueError with a friendly message."""
+    try:
+        return date.fromisoformat(str(raw).strip()).isoformat()
+    except (TypeError, ValueError):
+        raise ValueError(f"{label} needs a date (YYYY-MM-DD).") from None
+
+
+def _edit_bool(raw):
+    """Accept the select values (yes / no) or a JSON boolean."""
+    return raw is True or str(raw).strip().lower() in ("yes", "true", "1", "on")
+
+
+def _edit_value(field, raw):
+    """Validate one inline field value and return what to store."""
+    if field in EDIT_STRING_FIELDS:
+        text = (raw or "").strip()
+        if field in EDIT_REQUIRED_FIELDS and not text:
+            raise ValueError(f"{field.capitalize()} is required.")
+        return text or None
+    if field == "app_date":
+        if not (raw or "").strip():
+            raise ValueError("Date applied is required.")
+        return _edit_date(raw, "Date applied")
+    if field in EDIT_OPTIONAL_DATES:
+        label = field.replace("_", " ").capitalize()
+        return _edit_date(raw, label) if (raw or "").strip() else None
+    if field == "location_type":
+        value = (raw or "").strip()
+        if value and value not in db.LOCATION_TYPES:
+            raise ValueError("Unknown workplace type.")
+        return value or None
+    if field == "status":
+        value = (raw or "").strip()
+        if value not in db.STATUSES:
+            raise ValueError("Unknown status.")
+        return value
+    if field == "us_citizen_required":
+        value = (raw or "").strip()
+        return None if not value else _edit_bool(value)
+    if field == "energy_related":
+        return _edit_bool(raw)
+    raise ValueError(f"'{field}' is not an editable field.")
+
+
+def _edit_compensation(payload):
+    """Compensation type + amount saved together; the amount may be a range."""
+    comp_type = (payload.get("type") or "salary").strip()
+    amount = (payload.get("value") or "").strip()
+    c_type, c_salary, c_hourly = parse.process_compensation(
+        amount, comp_type=comp_type
+    )
+    if amount and c_salary is None:
+        raise ValueError("Could not read that pay amount (e.g. $82,625 - $103,653).")
+    return {
+        "compensation_type": c_type,
+        "comp_value_salary": c_salary,
+        "comp_value_hourly": c_hourly,
+        "pay": amount or None,
+    }
+
+
+@app.route("/app/<int:app_id>/field", methods=["POST"])
+def edit_field(app_id):
+    """Save one inline-edited detail-page field (JSON in, JSON out)."""
+    payload = request.get_json(silent=True) or {}
+    field = (payload.get("field") or "").strip()
+    if field != "compensation" and field not in EDIT_FIELDS:
+        return jsonify(ok=False, error=f"'{field}' is not an editable field."), 400
+    try:
+        if field == "compensation":
+            updates = _edit_compensation(payload)
+        else:
+            updates = {field: _edit_value(field, payload.get("value"))}
+    except ValueError as err:
+        return jsonify(ok=False, error=str(err)), 400
+    if not db.update_application(app_id, updates):
+        return jsonify(ok=False, error="Application not found."), 404
+
+    row = db.get_application(app_id)
+    value = row.get(field) if field != "compensation" else None
+    return jsonify(
+        ok=True,
+        field=field,
+        value=None if value is None else str(value),
+        comp_type="hourly" if row.get("compensation_type") is False else "salary",
+        comp_value=pay_text(
+            row.get("comp_value_hourly")
+            if row.get("compensation_type") is False
+            else row.get("comp_value_salary")
+        ),
+        comp_note=_comp_note(row),
+    )
+
+
 @app.route("/app/<int:app_id>/delete", methods=["POST"])
 def delete_app(app_id):
     """Delete an application and redirect to the dashboard."""
@@ -239,7 +383,11 @@ def detail(app_id):
         flash("Application not found.")
         return redirect(url_for("index"))
     return render_template(
-        "detail.html", app=application, jd_images=db.list_jd_images(app_id)
+        "detail.html",
+        app=application,
+        jd_images=db.list_jd_images(app_id),
+        location_types=db.LOCATION_TYPES,
+        statuses=db.STATUSES,
     )
 
 
