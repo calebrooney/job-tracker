@@ -9,11 +9,15 @@ import json
 import os
 import select
 import shutil
+import signal
+import socket
 import subprocess
 import sys
 import termios
+import threading
 import time
 import tty
+import webbrowser
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 from urllib.parse import unquote, urlparse
@@ -26,6 +30,9 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # `applied --test` results (predictions + run metadata) live here.
 EVAL_DIR = os.path.join(ROOT_DIR, "eval")
+
+# Flask GUI port — avoid 5000 (macOS AirPlay / Control Center).
+WEB_PORT = 5001
 
 # Fields compared between VLM prediction and user-confirmed value.
 LOG_FIELDS = [
@@ -631,6 +638,58 @@ def run_test(path, backend, run_name=None, note=""):
     print(f"Saved to {pred_path}")
 
 
+def kill_port(port):
+    """SIGTERM any process listening on port (e.g. a leftover Flask)."""
+    out = subprocess.run(
+        ["lsof", "-ti", f":{port}"],
+        capture_output=True, text=True,
+    )
+    pids = [p for p in out.stdout.split() if p]
+    for pid in pids:
+        try:
+            os.kill(int(pid), signal.SIGTERM)
+        except (ProcessLookupError, ValueError, PermissionError):
+            pass
+    if pids:
+        time.sleep(0.4)
+
+
+def launch_web():
+    """Kill existing Flask on WEB_PORT, start a new one, open the browser."""
+    url = f"http://127.0.0.1:{WEB_PORT}"
+    print(f"Stopping anything on :{WEB_PORT}...")
+    kill_port(WEB_PORT)
+    print(f"Starting web GUI → {url}")
+
+    def open_when_ready():
+        """Poll until the server accepts connections, then open the browser."""
+        for _ in range(50):
+            time.sleep(0.1)
+            try:
+                with socket.create_connection(("127.0.0.1", WEB_PORT), timeout=0.2):
+                    pass
+                webbrowser.open(url)
+                return
+            except OSError:
+                pass
+
+    threading.Thread(target=open_when_ready, daemon=True).start()
+    env = os.environ.copy()
+    src = os.path.join(ROOT_DIR, "src")
+    prev = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = src + (os.pathsep + prev if prev else "")
+    # Same as README: flask --app job_tracker.web run --debug
+    raise SystemExit(subprocess.call(
+        [
+            sys.executable, "-m", "flask",
+            "--app", "job_tracker.web",
+            "run", "--debug", "--port", str(WEB_PORT),
+        ],
+        cwd=ROOT_DIR,
+        env=env,
+    ))
+
+
 def main():
     """Entry point for `applied` / `python cli.py`."""
     ap = argparse.ArgumentParser(prog="applied")
@@ -640,6 +699,10 @@ def main():
              "writes eval/runs/, never saves applications",
     )
     ap.add_argument(
+        "--launch", action="store_true",
+        help="kill Flask on :5001, start the web GUI, open it in the browser",
+    )
+    ap.add_argument(
         "--backend", choices=list(vlm.BACKENDS), default=vlm.DEFAULT_BACKEND,
         help="VLM backend (default: %(default)s)",
     )
@@ -647,7 +710,9 @@ def main():
     ap.add_argument("--note", default="", help="what changed in this --test run (saved in meta.json)")
     args = ap.parse_args()
 
-    if args.test:
+    if args.launch:
+        launch_web()
+    elif args.test:
         run_test(args.test, args.backend, args.run, args.note)
     else:
         capture(args.backend)

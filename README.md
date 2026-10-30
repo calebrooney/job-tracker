@@ -101,81 +101,85 @@ so nothing is lost even though no local PDF is kept.
 
    The `applications` table is created automatically on first run.
 
-## `applied` (terminal capture)
+## `applied` commands
 
-```bash
-applied
-```
+After install, run `applied` from any directory (`python -m job_tracker.cli` also works).
 
-Capture a posting with a link and/or screenshot/PDF:
+### `applied`
 
-- **Link:** paste the URL as usual.
-- **Screenshot file:** drag a file into the terminal, or paste a path.
-- **PDF via Cmd+P (no Save to Disk):** use the **macOS system** print dialog
-  (not Chrome’s built-in “Save as PDF” destination):
-  - **Chrome:** Cmd+P, then click **Print using system dialog…** (or press
-    **Cmd+Option+P**), then in the system dialog open the **PDF** button
-    (bottom-left) → **Copy PDF to Clipboard**.
-  - **Safari:** Cmd+P already opens the system dialog → **PDF** →
-    **Copy PDF to Clipboard**.
-  Then in `applied`, leave the path blank and press **Enter**.
-- **Clipboard image:** copy a screenshot, then **Enter** at the media prompt
+Log a new application. Paste a job link and/or a screenshot/PDF, review the
+inferred fields, then save.
+
+Capture inputs:
+
+- **Link** — paste the URL.
+- **Screenshot file** — drag a file into the terminal, or paste a path.
+- **PDF via Cmd+P** — use the macOS system print dialog (not Chrome’s built-in
+  Save as PDF). Chrome: Cmd+Option+P → **PDF** → **Copy PDF to Clipboard**.
+  Safari: Cmd+P → **PDF** → **Copy PDF to Clipboard**. Then press Enter with
+  an empty path prompt.
+- **Clipboard image** — copy a screenshot, then Enter at the media prompt
   (Cmd+V of a photo into the terminal does not work).
 
-Then review inferred fields (instant single-key controls):
+Field review keys:
 
 - **Enter** — accept inferred value
-- **x** — reject / clear field and skip
-- **Delete / Backspace** — live manual reentry / correction
-- **1, 2, 3...** — instant selection on numbered menus (asterisk indicates inferred default)
-- **y / n** — instant yes/no toggle (Homebrew style, no Enter required)
+- **x** — clear / skip
+- **Delete / Backspace** — type a new value
+- **1, 2, 3…** — pick a numbered menu option (`*` is the default)
+- **y / n** — yes / no
 
-A link and a screenshot/PDF can both be used; clipboard is tried when there is
-no link and you press Enter on the media prompt.
+### `applied --launch`
 
-## Run the web GUI
+Stop any process on port **5001**, start the Flask web GUI there, and open
+http://127.0.0.1:5001 in your default browser. Flask stays in the foreground
+(Ctrl+C to stop).
+
+Equivalent without the browser open:
 
 ```bash
-source .venv/bin/activate
-flask --app job_tracker.web run --debug
+flask --app job_tracker.web run --debug --port 5001
 ```
 
-Then open http://127.0.0.1:5000
+### `applied --test PATH`
+
+Batch eval on an image/PDF or a folder. Runs VLM and OCR+regex in parallel,
+writes `eval/runs/<run>/predictions.jsonl`, and never touches the database.
+Reuse `--run NAME` to resume a run. Use `--note "..."` to record what changed.
+
+```bash
+applied --test eval/samples --run my-run --note "prompt tweak"
+```
+
+### `applied --backend {local,free,paid}`
+
+Pick the VLM backend for capture or `--test` (default: `local`). OpenRouter
+`free` / `paid` need `OPENROUTER_API_KEY`.
+
+```bash
+applied --backend free
+applied --test eval/samples --backend paid --run or-paid
+```
+
+## Web GUI
+
+Open with `applied --launch` (port 5001).
 
 - **Applications** list shows every row with status badges.
-- **+ New Application** starts the capture-first flow:
-  1. Paste a job link (scraped with BeautifulSoup) and/or upload a screenshot
-     (OCR'd with Tesseract). Screenshots are saved under `uploads/`.
-  2. Fields are inferred with format-aware heuristics (**Workday**, **Greenhouse**,
-     **iCIMS** POC; otherwise generic regex) and prefilled — including
-     posted date, application deadline, department, and US-citizen-required
-     when visible. See [JD-FORMATS.md](JD-FORMATS.md).
-  3. Validate/edit the form and save. The **application date defaults to today**
-     (editable for backfilling older applications).
-  - Prefer to type it all yourself? Use the "Skip — enter details manually" link.
-- **Edit in place** on an application's detail page: click any value (role,
-  company, location, dates, status, pay, ...), change it, and it saves on blur
-  (Enter saves too, Escape reverts) via `POST /app/<id>/field`. Pay is edited as
-  a range (`$82,625 - $103,653`), saved together with its salary/hourly type.
-- An application's detail page still lets you (re)capture the job description
-  from a link or screenshot.
-
-## Add via CLI (same as `applied`)
-
-```bash
-applied
-# or: python -m job_tracker.cli
-```
+- **+ New Application** is the capture-first flow: paste a link and/or upload a
+  screenshot, review inferred fields (Workday / Greenhouse / iCIMS heuristics
+  when they match; see [JD-FORMATS.md](JD-FORMATS.md)), then save. Application
+  date defaults to today. Use “Skip — enter details manually” to type everything.
+- **Edit in place** on a detail page: click a value, edit, blur or Enter to save
+  (`POST /app/<id>/field`). Escape reverts. Pay accepts a range with salary/hourly.
+- Detail pages can (re)capture the job description from a link or screenshot.
 
 ## VLM field extraction (`src/job_tracker/vlm.py`)
 
 Page 1 of a screenshot/PDF is read by a local vision model (default
 **Qwen3-VL-4B, 4-bit, via mlx-vlm**; free, ~3 GB, downloaded on first use).
-It falls back to OCR + regex on failure. Change it with
-`VLM_LOCAL_MODEL=<alias or HF repo id>` (aliases in `vlm.py`). OpenRouter
-`free`/`paid` backends are also available with `OPENROUTER_API_KEY`.
-
-Evaluate against `eval/labels.jsonl` with `applied --test`.
+It falls back to OCR + regex on failure. Change the local model with
+`VLM_LOCAL_MODEL=<alias or HF repo id>` (aliases in `vlm.py`).
 
 ## Stored job postings
 
@@ -183,14 +187,12 @@ Every page of a captured PDF/screenshot is rendered to PNG and stored in
 Postgres (`jd_images`), so no local PDF is needed. View them in the web GUI on
 an application's detail page under **JD Pages**.
 
-## Notes
+<!-- ## Notes
 
-- JS-heavy job boards (Workday, Handshake) may return little text from plain
-  link scraping; the screenshot + OCR path is the reliable fallback.
 - Extracted job description text is stored raw (no LLM cleanup).
 - Pay is stored as a Postgres `numrange` (`comp_value_salary`,
   `comp_value_hourly`), so a posted range like `$82,625 - $103,653` keeps both
   endpoints instead of being averaged. Hourly input is also annualized
   (`* 2080`) into `comp_value_salary`. The raw text the user typed stays in
   `pay`, and `init_db()` re-derives the ranges from it on startup, converting
-  older `numeric` columns as it goes.
+  older `numeric` columns as it goes. -->
