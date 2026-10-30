@@ -33,7 +33,6 @@ EMPTY_FIELDS = {
     "pay": None,
     "job_id": None,
     "posted_date": None,
-    "application_deadline": None,
     "department": None,
     "us_citizen_required": None,
 }
@@ -366,23 +365,6 @@ def _posted_date(text):
     return _parse_date_snippet(raw) if raw else None
 
 
-def _application_deadline(text):
-    """Extract application deadline after common labels."""
-    raw = _label_value(
-        text,
-        [
-            "Application Deadline",
-            "Application Close Date",
-            "Apply By",
-            "Apply by",
-            "Closing Date",
-            "Close Date",
-            "Deadline",
-        ],
-    )
-    return _parse_date_snippet(raw) if raw else None
-
-
 def _department(text):
     """Extract department / team after common labels."""
     return _label_value(
@@ -430,7 +412,6 @@ def _shared_from_text(text):
         "comp_value": comp_val,
         "location": _city_st(text),
         "posted_date": _posted_date(text),
-        "application_deadline": _application_deadline(text),
         "department": _department(text),
         "us_citizen_required": _us_citizen_required(text),
     }

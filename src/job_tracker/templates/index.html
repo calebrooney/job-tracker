@@ -43,7 +43,6 @@
         <th>Type</th>
         <th>Compensation</th>
         <th>Applied</th>
-        <th>Due</th>
         <th>Status</th>
         <th style="text-align: right;">Actions</th>
       </tr>
@@ -68,7 +67,6 @@
         </td>
         <td>{{ a.comp_value_salary|format_salary }}</td>
         <td>{{ a.app_date or "-" }}</td>
-        <td>{{ a.due_date or "-" }}</td>
         <td>
           <span class="status-badge status-{{ a.status or 'applied' }}">{{ a.status or "applied" }}</span>
         </td>

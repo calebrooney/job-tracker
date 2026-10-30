@@ -37,7 +37,7 @@ WEB_PORT = 5001
 # Fields compared between VLM prediction and user-confirmed value.
 LOG_FIELDS = [
     "role", "company", "location", "location_type", "pay", "job_id",
-    "posted_date", "application_deadline", "department", "us_citizen_required",
+    "posted_date", "department", "us_citizen_required",
 ]
 
 
@@ -445,7 +445,6 @@ def capture(backend):
     data["app_date"] = date.today().isoformat()
     data["status"] = "applied"
     data["energy_related"] = False
-    data["due_date"] = None
 
     print(
         "\nReview inferred fields (Enter accept, x reject/clear, Delete edit manually):\n"
@@ -501,11 +500,7 @@ def capture(backend):
     data["posted_date"] = ask_text(
         "Posted date (YYYY-MM-DD)", data.get("posted_date")
     )
-    data["application_deadline"] = ask_text(
-        "Application deadline (YYYY-MM-DD)", data.get("application_deadline")
-    )
     data["app_date"] = ask_text("Application date (YYYY-MM-DD)", data["app_date"])
-    data["due_date"] = ask_text("Due date (YYYY-MM-DD)", data.get("due_date"))
     data["job_id"] = ask_text("Job / req id", data.get("job_id"))
     data["us_citizen_required"] = ask_yes_no_optional(
         "US citizen required", data.get("us_citizen_required")

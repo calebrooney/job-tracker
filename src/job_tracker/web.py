@@ -241,7 +241,6 @@ def save():
         "pay": comp_val_raw or None,
         # Applied date defaults to today; user may override for edge cases.
         "app_date": form.get("app_date") or date.today().isoformat(),
-        "due_date": form.get("due_date") or None,
         "job_id": form.get("job_id") or None,
         "link": form.get("link") or None,
         # Unchecked checkbox is absent from the form data.
@@ -251,7 +250,6 @@ def save():
         "job_description": form.get("job_description") or None,
         "jd_source": form.get("jd_source") or None,
         "posted_date": form.get("posted_date") or None,
-        "application_deadline": form.get("application_deadline") or None,
         "department": form.get("department") or None,
         "us_citizen_required": us_citizen_required,
     }
@@ -266,7 +264,7 @@ def save():
 # text, which keeps them in sync with the startup backfill in db.init_db().
 EDIT_STRING_FIELDS = {"role", "company", "department", "location", "job_id", "link"}
 EDIT_REQUIRED_FIELDS = {"role", "company"}
-EDIT_OPTIONAL_DATES = {"due_date", "posted_date", "application_deadline"}
+EDIT_OPTIONAL_DATES = {"posted_date"}
 EDIT_FIELDS = EDIT_STRING_FIELDS | EDIT_OPTIONAL_DATES | {
     "app_date", "location_type", "status", "us_citizen_required", "energy_related",
 }

@@ -45,7 +45,6 @@ def init_db():
                 comp_value_hourly   NUMRANGE,
                 pay                 TEXT,
                 app_date            DATE,
-                due_date            DATE,
                 job_id              TEXT,
                 link                TEXT,
                 energy_related      BOOLEAN DEFAULT FALSE,
@@ -53,7 +52,6 @@ def init_db():
                 job_description     TEXT,
                 jd_source           TEXT,
                 posted_date         DATE,
-                application_deadline DATE,
                 department          TEXT,
                 us_citizen_required BOOLEAN,
                 created_at          TIMESTAMPTZ DEFAULT now()
@@ -80,7 +78,6 @@ def init_db():
         # Existing DBs created before these columns need a light migration.
         for col, typ in [
             ("posted_date", "DATE"),
-            ("application_deadline", "DATE"),
             ("department", "TEXT"),
             ("us_citizen_required", "BOOLEAN"),
             ("compensation_type", "BOOLEAN"),
@@ -90,6 +87,9 @@ def init_db():
             cur.execute(
                 f"ALTER TABLE applications ADD COLUMN IF NOT EXISTS {col} {typ}"
             )
+        # Drop unused date columns from older schemas.
+        for col in ("due_date", "application_deadline"):
+            cur.execute(f"ALTER TABLE applications DROP COLUMN IF EXISTS {col}")
 
         # Compensation is stored as a range so a posted range ("$82,625 -
         # $103,653") is kept intact. Older DBs have NUMERIC columns: promote
@@ -152,10 +152,9 @@ def add_application(data):
     fields = [
         "role", "company", "location", "location_type",
         "compensation_type", "comp_value_salary", "comp_value_hourly", "pay",
-        "app_date", "due_date", "job_id", "link", "energy_related",
+        "app_date", "job_id", "link", "energy_related",
         "status", "job_description", "jd_source",
-        "posted_date", "application_deadline", "department",
-        "us_citizen_required",
+        "posted_date", "department", "us_citizen_required",
     ]
     values = [data.get(f) for f in fields]
     placeholders = ", ".join(["%s"] * len(fields))
@@ -174,7 +173,7 @@ def add_application(data):
 EDITABLE_COLUMNS = (
     "role", "company", "department", "location", "location_type",
     "compensation_type", "comp_value_salary", "comp_value_hourly", "pay",
-    "app_date", "due_date", "posted_date", "application_deadline",
+    "app_date", "posted_date",
     "job_id", "link", "us_citizen_required", "energy_related", "status",
 )
 

@@ -81,7 +81,7 @@ PDF_RENDER_SCALE = 2.0
 #     "role, company, location (one string like \"San Diego, CA\"), "
 #     "loc_type (onsite|hybrid|remote), "
 #     "pay (as written, e.g. $25/hr or $90,000-$110,000), job_id, "
-#     "posted (YYYY-MM-DD), deadline (YYYY-MM-DD), dept, "
+#     "posted (YYYY-MM-DD), dept, "
 #     "us_citizen (true if US citizenship is required, else false). "
 #     "Use null for anything not visible. No explanation."
 # )
@@ -90,7 +90,7 @@ PDF_RENDER_SCALE = 2.0
 PROMPT = (
     "Extract fields from this job posting image. Reply with ONLY one-line minified JSON "
     "with keys: role, company, location, job_id, pay, loc_type (onsite|hybrid|remote), "
-    "posted (YYYY-MM-DD), deadline (YYYY-MM-DD), dept, us_citizen (true/false). "
+    "posted (YYYY-MM-DD), dept, us_citizen (true/false). "
     "Copy role, company, location, job_id and pay EXACTLY as written in the image. "
     "company is the hiring company's name as shown. "
     "job_id is the requisition/job ID only if a label like Job ID, Req ID or Requisition is shown. "
@@ -184,7 +184,6 @@ def _to_fields(raw):
     fields["location_type"] = loc_type if loc_type in ("onsite", "hybrid", "remote") else None
     fields["job_id"] = _clean(raw.get("job_id"))
     fields["posted_date"] = _clean(raw.get("posted"))
-    fields["application_deadline"] = _clean(raw.get("deadline"))
     fields["department"] = _clean(raw.get("dept"))
     us = raw.get("us_citizen")
     fields["us_citizen_required"] = us if isinstance(us, bool) else None
