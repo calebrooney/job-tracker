@@ -1,4 +1,5 @@
 # Job Application Tracker
+## VLM powered command line data entry for job description pdfs
 
 A simple job application tracker (Flask + Postgres) modeled on the columns in
 `Intern Apps.xlsx`. The web GUI is capture-first: paste a job link or upload a
