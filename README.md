@@ -129,6 +129,18 @@ Field review keys:
 - **1, 2, 3…** — pick a numbered menu option (`*` is the default)
 - **y / n** — yes / no
 
+### `applied --resume`
+
+Upload a resume PDF as a new version of a named **lane** (e.g. `SWE`). Pick a
+file by dragging a path, pressing Enter for the Finder picker, or `c` for a
+clipboard PDF; then choose an existing lane or `+ New lane` and type its name.
+Each upload adds the next version (v1, v2, ...) to that lane's timeline.
+
+While logging an application with `applied`, a numbered **Resume used** menu
+lists the latest version of each lane, plus `Custom` (upload a one-off PDF for
+that application) and `None`. The Web GUI has a **Resumes** page for the same
+uploads and a Resume card on each application to change or download it.
+
 ### `applied --launch`
 
 Stop any process on port **5001**, start the Flask web GUI there, and open

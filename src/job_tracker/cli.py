@@ -359,6 +359,57 @@ def resolve_capture(raw):
     return dest, os.path.basename(dest)
 
 
+def pick_pdf():
+    """Ask for a resume PDF. Return (bytes, filename) or None if cancelled.
+
+    Paste/drag a path, Enter for a Finder picker, or `c` for a clipboard PDF.
+    """
+    raw = input("Resume PDF path (drag file, Enter = Finder picker, c = clipboard): ").strip()
+    clip = False
+    if raw.lower() == "c":
+        clip = True
+        path = save_clipboard_pdf()
+    elif raw:
+        path = normalize_path(raw)
+    else:
+        # Native macOS file chooser; cancel makes osascript exit non-zero.
+        out = subprocess.run(
+            ["osascript", "-e",
+             'POSIX path of (choose file with prompt "Select resume PDF")'],
+            capture_output=True, text=True,
+        )
+        path = out.stdout.strip()
+    if not path or not os.path.isfile(path):
+        print(f"File not found: {path or '(none)'}")
+        return None
+    with open(path, "rb") as f:
+        pdf = f.read()
+    name = os.path.basename(path)
+    if clip:
+        os.remove(path)
+    return pdf, name
+
+
+def upload_resume():
+    """`applied --resume`: upload a PDF as a new version of a named lane."""
+    db.init_db()
+    picked = pick_pdf()
+    if picked is None:
+        return
+    lanes = [l["name"] for l in db.list_lanes()]
+    new_opt = "+ New lane"
+    choice = ask_choice("Lane", lanes + [new_opt]) if lanes else new_opt
+    if choice == new_opt:
+        name = input("New lane name: ").strip()
+    else:
+        name = choice
+    if not name:
+        print("Cancelled.")
+        return
+    _, version = db.add_lane_version(name, *picked)
+    print(f"Saved {name} v{version}")
+
+
 def capture(backend):
     """Read a link and/or screenshot/PDF, infer fields (VLM), confirm, and insert."""
     db.init_db()
@@ -511,6 +562,16 @@ def capture(backend):
         ask_choice("Status", db.STATUSES, data["status"]) or "applied"
     )
 
+    # Resume used: latest version of each lane, a one-off custom PDF, or none.
+    latest = db.list_latest_versions()
+    custom_opt = "Custom (upload for this app)"
+    labels = {
+        f"{v['lane']} v{v['version']} ({v['created_at']:%Y-%m-%d})": v["id"]
+        for v in latest
+    }
+    resume_pick = ask_choice("Resume used", [*labels, custom_opt, "None"], "None")
+    data["resume_version_id"] = labels.get(resume_pick)
+
     if not ask_yes_no("\nSave this application?", True):
         print("Cancelled.")
         return
@@ -547,6 +608,11 @@ def capture(backend):
             backend, model, latency_ms, predicted,
             {k: data.get(k) for k in LOG_FIELDS},
         )
+    # Custom resume needs the application row, so it is uploaded after save.
+    if resume_pick == custom_opt:
+        picked = pick_pdf()
+        if picked:
+            db.add_custom_resume(app_id, *picked)
     role = data.get("role") or "(no role)"
     company = data.get("company") or "(no company)"
     print(f"\nLogged #{app_id}: {role} @ {company}")
@@ -698,6 +764,10 @@ def main():
         help="kill Flask on :5001, start the web GUI, open it in the browser",
     )
     ap.add_argument(
+        "--resume", action="store_true",
+        help="upload a resume PDF as a new version of a named lane",
+    )
+    ap.add_argument(
         "--backend", choices=list(vlm.BACKENDS), default=vlm.DEFAULT_BACKEND,
         help="VLM backend (default: %(default)s)",
     )
@@ -709,6 +779,8 @@ def main():
         launch_web()
     elif args.test:
         run_test(args.test, args.backend, args.run, args.note)
+    elif args.resume:
+        upload_resume()
     else:
         capture(args.backend)
 

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto;">
+  <div class="card">
+    <div class="card-header"><h3>Upload Resume</h3></div>
+    <form method="post" enctype="multipart/form-data">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="pdf">PDF</label>
+          <input type="file" id="pdf" name="pdf" accept="application/pdf" required>
+        </div>
+        <div class="form-group">
+          <label for="lane">Existing lane</label>
+          <select id="lane" name="lane">
+            <option value="">-- none --</option>
+            {% for l in lanes %}<option value="{{ l.name }}">{{ l.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="new_lane">...or new lane name</label>
+          <input type="text" id="new_lane" name="new_lane" placeholder="e.g. SWE">
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top: 16px;">
+        <button class="btn" type="submit">Upload</button>
+      </div>
+    </form>
+  </div>
+
+  {% for l in lanes %}
+  <div class="card">
+    <div class="card-header"><h3>{{ l.name }}</h3></div>
+    {% for v in l.versions %}
+    <p style="margin: 4px 0;">
+      v{{ v.version }} &bull; {{ v.created_at.strftime('%Y-%m-%d') }} &bull;
+      <a href="{{ url_for('resume_file', version_id=v.id) }}">{{ v.filename or 'download' }}</a>
+    </p>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">No resume lanes yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}

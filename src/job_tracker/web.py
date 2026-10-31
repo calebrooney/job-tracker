@@ -384,6 +384,8 @@ def detail(app_id):
         "detail.html",
         app=application,
         jd_images=db.list_jd_images(app_id),
+        resume_label=db.get_resume_label(application["resume_version_id"]),
+        resume_options=db.list_latest_versions(),
         location_types=db.LOCATION_TYPES,
         statuses=db.STATUSES,
     )
@@ -432,3 +434,46 @@ def capture_jd(app_id):
 if __name__ == "__main__":
     # Port 5001 — avoid 5000 (macOS AirPlay / Control Center).
     app.run(debug=True, port=5001)
+
+
+@app.route("/resumes", methods=["GET", "POST"])
+def resumes():
+    """List resume lanes with their version timelines; upload a new version."""
+    if request.method == "POST":
+        pdf = request.files.get("pdf")
+        # A typed new-lane name wins over the lane dropdown.
+        lane = request.form.get("new_lane", "").strip() or request.form.get("lane", "")
+        if not (pdf and pdf.filename and lane):
+            flash("Choose a PDF and a lane name.")
+        else:
+            _, version = db.add_lane_version(lane, pdf.read(), secure_filename(pdf.filename))
+            flash(f"Saved {lane} v{version}")
+        return redirect(url_for("resumes"))
+    lanes = db.list_lanes()
+    for lane in lanes:
+        lane["versions"] = db.list_lane_versions(lane["id"])
+    return render_template("resumes.html", lanes=lanes)
+
+
+@app.route("/resumes/<int:version_id>/file")
+def resume_file(version_id):
+    """Download one stored resume PDF from the database."""
+    row = db.get_resume_version(version_id)
+    if row is None:
+        return "Not found", 404
+    filename, mime, data = row
+    return Response(
+        data, mimetype=mime,
+        headers={"Content-Disposition": f'attachment; filename="{filename or "resume.pdf"}"'},
+    )
+
+
+@app.route("/app/<int:app_id>/resume", methods=["POST"])
+def set_resume(app_id):
+    """Select a lane version for an application, or upload a custom PDF."""
+    pdf = request.files.get("pdf")
+    if pdf and pdf.filename:
+        db.add_custom_resume(app_id, pdf.read(), secure_filename(pdf.filename))
+    else:
+        db.set_application_resume(app_id, request.form.get("version_id") or None)
+    return redirect(url_for("detail", app_id=app_id))

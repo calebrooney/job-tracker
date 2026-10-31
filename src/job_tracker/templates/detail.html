@@ -152,20 +152,36 @@
     </div>
   </div>
 
-  <!-- Job Description viewer -->
+  <!-- Resume used for this application -->
   <div class="card">
     <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-      <h3>Job Description</h3>
-      {% if app.jd_source %}
-      <span class="subtext">Source: {{ app.jd_source }}</span>
+      <h3>Resume</h3>
+      {% if app.resume_version_id %}
+      <a href="{{ url_for('resume_file', version_id=app.resume_version_id) }}">{{ resume_label }} &darr;</a>
+      {% else %}
+      <span class="subtext">None selected</span>
       {% endif %}
     </div>
-
-    {% if app.job_description %}
-      <div class="jd-viewer">{{ app.job_description }}</div>
-    {% else %}
-      <p class="muted" style="margin-bottom: 0;">No job description captured yet.</p>
-    {% endif %}
+    <form method="post" action="{{ url_for('set_resume', app_id=app.id) }}" enctype="multipart/form-data">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="version_id">Lane version</label>
+          <select id="version_id" name="version_id">
+            <option value="">None</option>
+            {% for v in resume_options %}
+            <option value="{{ v.id }}" {% if v.id == app.resume_version_id %}selected{% endif %}>{{ v.lane }} v{{ v.version }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="resume-pdf">...or custom PDF for this app</label>
+          <input type="file" id="resume-pdf" name="pdf" accept="application/pdf">
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top: 16px;">
+        <button class="btn btn-secondary" type="submit">Save Resume</button>
+      </div>
+    </form>
   </div>
 
   <!-- Archived JD pages (full multi-page capture, stored in the DB) -->
@@ -211,6 +227,19 @@
       </div>
     </form>
   </div>
+
+  <!-- Job Description text: collapsed by default (native details: > closed, v open) -->
+  <details class="card">
+    <summary style="cursor: pointer; font-weight: 600;">
+      Job Description Text
+      {% if app.jd_source %}<span class="subtext" style="font-weight: normal;">&bull; Source: {{ app.jd_source }}</span>{% endif %}
+    </summary>
+    {% if app.job_description %}
+      <div class="jd-viewer" style="margin-top: 12px;">{{ app.job_description }}</div>
+    {% else %}
+      <p class="muted" style="margin: 12px 0 0;">No job description captured yet.</p>
+    {% endif %}
+  </details>
 </div>
 
 <div id="edit-toast" class="edit-toast" hidden></div>

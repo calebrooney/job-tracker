@@ -75,6 +75,37 @@ def init_db():
             )
             """
         )
+        # Resume lanes: named tracks, each with a timeline of PDF versions.
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS resume_lanes (
+                id         SERIAL PRIMARY KEY,
+                name       TEXT NOT NULL UNIQUE,
+                created_at TIMESTAMPTZ DEFAULT now()
+            )
+            """
+        )
+        # A version belongs to a lane (lane_id) or is a one-off custom resume
+        # tied to a single application (application_id).
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS resume_versions (
+                id             SERIAL PRIMARY KEY,
+                lane_id        INTEGER REFERENCES resume_lanes(id) ON DELETE CASCADE,
+                application_id INTEGER REFERENCES applications(id) ON DELETE CASCADE,
+                version        INTEGER NOT NULL DEFAULT 1,
+                filename       TEXT,
+                mime_type      TEXT NOT NULL DEFAULT 'application/pdf',
+                data           BYTEA NOT NULL,
+                created_at     TIMESTAMPTZ DEFAULT now()
+            )
+            """
+        )
+        # The resume version used for an application.
+        cur.execute(
+            "ALTER TABLE applications ADD COLUMN IF NOT EXISTS resume_version_id "
+            "INTEGER REFERENCES resume_versions(id) ON DELETE SET NULL"
+        )
         # Existing DBs created before these columns need a light migration.
         for col, typ in [
             ("posted_date", "DATE"),
@@ -155,6 +186,7 @@ def add_application(data):
         "app_date", "job_id", "link", "energy_related",
         "status", "job_description", "jd_source",
         "posted_date", "department", "us_citizen_required",
+        "resume_version_id",
     ]
     values = [data.get(f) for f in fields]
     placeholders = ", ".join(["%s"] * len(fields))
@@ -305,3 +337,122 @@ def get_jd_image(app_id, page):
     if row is None:
         return None
     return row[0], bytes(row[1])
+
+
+# ---------------------------------------------------------------- resumes
+
+def list_lanes():
+    """All resume lanes (id, name), oldest first."""
+    with get_connection() as conn, conn.cursor(
+        cursor_factory=psycopg2.extras.RealDictCursor
+    ) as cur:
+        cur.execute("SELECT id, name FROM resume_lanes ORDER BY id")
+        return cur.fetchall()
+
+
+def list_latest_versions():
+    """The newest version of each lane, with the lane name (for menus)."""
+    with get_connection() as conn, conn.cursor(
+        cursor_factory=psycopg2.extras.RealDictCursor
+    ) as cur:
+        cur.execute(
+            """
+            SELECT DISTINCT ON (v.lane_id)
+                   v.id, v.version, v.created_at, l.name AS lane
+            FROM resume_versions v JOIN resume_lanes l ON l.id = v.lane_id
+            ORDER BY v.lane_id, v.version DESC
+            """
+        )
+        return cur.fetchall()
+
+
+def list_lane_versions(lane_id):
+    """Every version of one lane, newest first (the timeline)."""
+    with get_connection() as conn, conn.cursor(
+        cursor_factory=psycopg2.extras.RealDictCursor
+    ) as cur:
+        cur.execute(
+            "SELECT id, version, filename, created_at FROM resume_versions "
+            "WHERE lane_id = %s ORDER BY version DESC",
+            (lane_id,),
+        )
+        return cur.fetchall()
+
+
+def add_lane_version(lane_name, pdf_bytes, filename):
+    """Upload a resume to the lane called `lane_name` (created if new).
+
+    The version number is the lane's previous max + 1. Returns (id, version).
+    """
+    with get_connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO resume_lanes (name) VALUES (%s) "
+            "ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id",
+            (lane_name,),
+        )
+        lane_id = cur.fetchone()[0]
+        cur.execute(
+            "SELECT COALESCE(MAX(version), 0) + 1 FROM resume_versions WHERE lane_id = %s",
+            (lane_id,),
+        )
+        version = cur.fetchone()[0]
+        cur.execute(
+            "INSERT INTO resume_versions (lane_id, version, filename, data) "
+            "VALUES (%s, %s, %s, %s) RETURNING id",
+            (lane_id, version, filename, psycopg2.Binary(pdf_bytes)),
+        )
+        return cur.fetchone()[0], version
+
+
+def add_custom_resume(app_id, pdf_bytes, filename):
+    """Store a one-off resume for one application and select it. Returns id."""
+    with get_connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO resume_versions (application_id, filename, data) "
+            "VALUES (%s, %s, %s) RETURNING id",
+            (app_id, filename, psycopg2.Binary(pdf_bytes)),
+        )
+        version_id = cur.fetchone()[0]
+        cur.execute(
+            "UPDATE applications SET resume_version_id = %s WHERE id = %s",
+            (version_id, app_id),
+        )
+        return version_id
+
+
+def get_resume_version(version_id):
+    """Return (filename, mime_type, bytes) for one version, or None."""
+    with get_connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT filename, mime_type, data FROM resume_versions WHERE id = %s",
+            (version_id,),
+        )
+        row = cur.fetchone()
+    if row is None:
+        return None
+    return row[0], row[1], bytes(row[2])
+
+
+def get_resume_label(version_id):
+    """Human label like 'SWE v3' or 'Custom', or None if unset."""
+    if not version_id:
+        return None
+    with get_connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            "SELECT l.name, v.version FROM resume_versions v "
+            "LEFT JOIN resume_lanes l ON l.id = v.lane_id WHERE v.id = %s",
+            (version_id,),
+        )
+        row = cur.fetchone()
+    if row is None:
+        return None
+    return f"{row[0]} v{row[1]}" if row[0] else "Custom"
+
+
+def set_application_resume(app_id, version_id):
+    """Select which resume version an application used (None clears it)."""
+    with get_connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            "UPDATE applications SET resume_version_id = %s WHERE id = %s",
+            (version_id, app_id),
+        )
