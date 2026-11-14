@@ -145,7 +145,7 @@ uploads and a Resume card on each application to change or download it.
 
 Update the status of an application. Lists a numbered list of **active**
 applications (status `applied`). Type a number to pick one, then enter `1` for
-**rejected** or `2` for **interview**. Anything else cancels.
+**rejected**, `2` for **interview**, or `3` for **offer**. Anything else cancels.
 
 ### `applied --launch`
 

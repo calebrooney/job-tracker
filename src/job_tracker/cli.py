@@ -411,7 +411,7 @@ def upload_resume():
 
 
 def update_status():
-    """`applied --status`: pick an active (applied) application, mark it rejected/interview."""
+    """`applied --status`: pick an active (applied) application, mark it rejected/interview/offer."""
     db.init_db()
     # Active = still waiting on a response.
     active = [a for a in db.list_applications() if a["status"] == "applied"]
@@ -430,7 +430,9 @@ def update_status():
     app = active[int(pick) - 1]
 
     # Choose the new status.
-    new = {"1": "rejected", "2": "interview"}.get(input("1) rejected  2) interview: ").strip())
+    new = {"1": "rejected", "2": "interview", "3": "offer"}.get(
+        input("1) rejected  2) interview  3) offer: ").strip()
+    )
     if not new:
         print("Cancelled.")
         return
@@ -798,7 +800,7 @@ def main():
     )
     ap.add_argument(
         "--status", action="store_true",
-        help="list active applications and mark one rejected or interview",
+        help="list active applications and mark one rejected, interview, or offer",
     )
     ap.add_argument(
         "--backend", choices=list(vlm.BACKENDS), default=vlm.DEFAULT_BACKEND,
