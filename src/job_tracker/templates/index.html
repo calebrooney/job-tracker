@@ -2,11 +2,11 @@
 {% block content %}
 <div class="metrics-strip">
   <div class="metric-card">
-    <div class="metric-label">Total Tracked</div>
+    <div class="metric-label">Applied</div>
     <div class="metric-value">{{ applications|length }}</div>
   </div>
   <div class="metric-card">
-    <div class="metric-label">Applied</div>
+    <div class="metric-label">Pending</div>
     <div class="metric-value">{{ applications|selectattr('status', 'equalto', 'applied')|list|length }}</div>
   </div>
   <div class="metric-card">
