@@ -410,6 +410,35 @@ def upload_resume():
     print(f"Saved {name} v{version}")
 
 
+def update_status():
+    """`applied --status`: pick an active (applied) application, mark it rejected/interview."""
+    db.init_db()
+    # Active = still waiting on a response.
+    active = [a for a in db.list_applications() if a["status"] == "applied"]
+    if not active:
+        print("No active applications.")
+        return
+
+    for i, a in enumerate(active, start=1):
+        print(f"  {i}) {a['role'] or '(no role)'} @ {a['company'] or '(no company)'}")
+
+    # Choose the application by its list number.
+    pick = input(f"\nApplication to update (1-{len(active)}): ").strip()
+    if not pick.isdigit() or not 1 <= int(pick) <= len(active):
+        print("Cancelled.")
+        return
+    app = active[int(pick) - 1]
+
+    # Choose the new status.
+    new = {"1": "rejected", "2": "interview"}.get(input("1) rejected  2) interview: ").strip())
+    if not new:
+        print("Cancelled.")
+        return
+
+    db.update_application(app["id"], {"status": new})
+    print(f"#{app['id']} {app['company'] or ''} -> {new}")
+
+
 def capture(backend):
     """Read a link and/or screenshot/PDF, infer fields (VLM), confirm, and insert."""
     db.init_db()
@@ -768,6 +797,10 @@ def main():
         help="upload a resume PDF as a new version of a named lane",
     )
     ap.add_argument(
+        "--status", action="store_true",
+        help="list active applications and mark one rejected or interview",
+    )
+    ap.add_argument(
         "--backend", choices=list(vlm.BACKENDS), default=vlm.DEFAULT_BACKEND,
         help="VLM backend (default: %(default)s)",
     )
@@ -781,6 +814,8 @@ def main():
         run_test(args.test, args.backend, args.run, args.note)
     elif args.resume:
         upload_resume()
+    elif args.status:
+        update_status()
     else:
         capture(args.backend)
 

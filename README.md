@@ -141,6 +141,12 @@ lists the latest version of each lane, plus `Custom` (upload a one-off PDF for
 that application) and `None`. The Web GUI has a **Resumes** page for the same
 uploads and a Resume card on each application to change or download it.
 
+### `applied --status`
+
+Update the status of an application. Lists a numbered list of **active**
+applications (status `applied`). Type a number to pick one, then enter `1` for
+**rejected** or `2` for **interview**. Anything else cancels.
+
 ### `applied --launch`
 
 Stop any process on port **5001**, start the Flask web GUI there, and open
